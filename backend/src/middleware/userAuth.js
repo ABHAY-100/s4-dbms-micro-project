@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export const auth = async (req, res, next) => {
+export const userAuth = async (req, res, next) => {
   try {
     let token = req.cookies['death_set_auth_token'];
     
@@ -23,6 +23,6 @@ export const auth = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    res.status(401).json({ error: 'Please authenticate.' });
+    res.status(401).json({ error: 'Please authenticate' });
   }
 };

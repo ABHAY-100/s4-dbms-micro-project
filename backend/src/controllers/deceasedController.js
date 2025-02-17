@@ -1,50 +1,48 @@
-const { PrismaClient } = require('@prisma/client');
+import { PrismaClient } from '@prisma/client';
+import { findAvailableChamber, findAvailableUnit } from '../utils/chamberUtils.js';
+
 const prisma = new PrismaClient();
 
-// Create a new deceased record
-exports.createDeceased = async (req, res) => {
+export const createDeceasedRecord = async (req, res) => {
   try {
-    const {
-      firstName,
-      lastName,
-      dateOfBirth,
-      dateOfDeath,
-      timeOfDeath,
-      causeOfDeath,
-      gender,
-      identificationMarks,
-      personalBelongings,
-      chamberId,
-    } = req.body;
+    const recordData = { ...req.body };
+    
+    // Find available chamber and unit
+    const chamber = await findAvailableChamber();
+    const { unitNumber, unitName } = await findAvailableUnit(chamber.id);
 
-    const deceased = await prisma.deceasedRecord.create({
-      data: {
-        firstName,
-        lastName,
-        dateOfBirth: new Date(dateOfBirth),
-        dateOfDeath: new Date(dateOfDeath),
-        timeOfDeath,
-        causeOfDeath,
-        gender,
-        identificationMarks,
-        personalBelongings,
-        chamberId,
-        userId: req.user.id, // From auth middleware
-      },
-      include: {
-        chamber: true,
-        nextOfKin: true,
-      },
+    // Create record with chamber assignment
+    const record = await prisma.$transaction(async (tx) => {
+      const newRecord = await tx.deceasedRecord.create({
+        data: {
+          ...recordData,
+          chamberId: chamber.id,
+          chamberUnitName: unitName,
+          status: 'IN_FACILITY',
+          handledBy: {
+            connect: { id: req.user.id }
+          }
+        }
+      });
+
+      await tx.chamber.update({
+        where: { id: chamber.id },
+        data: {
+          currentOccupancy: { increment: 1 },
+          status: chamber.currentOccupancy + 1 >= chamber.capacity ? 'OCCUPIED' : 'AVAILABLE'
+        }
+      });
+
+      return newRecord;
     });
 
-    res.status(201).json(deceased);
+    res.status(201).json(record);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
 
-// Get all deceased records
-exports.getAllDeceased = async (req, res) => {
+export const getAllDeceasedRecords = async (req, res) => {
   try {
     const deceased = await prisma.deceasedRecord.findMany({
       include: {
@@ -59,8 +57,7 @@ exports.getAllDeceased = async (req, res) => {
   }
 };
 
-// Get a single deceased record
-exports.getDeceased = async (req, res) => {
+export const getDeceasedRecord = async (req, res) => {
   try {
     const deceased = await prisma.deceasedRecord.findUnique({
       where: { id: req.params.id },
@@ -80,25 +77,59 @@ exports.getDeceased = async (req, res) => {
   }
 };
 
-// Update a deceased record
-exports.updateDeceased = async (req, res) => {
+export const updateDeceasedRecord = async (req, res) => {
   try {
-    const deceased = await prisma.deceasedRecord.update({
-      where: { id: req.params.id },
-      data: req.body,
-      include: {
-        chamber: true,
-        nextOfKin: true,
-      },
+    const { id } = req.params;
+    const updateData = { ...req.body };
+
+    const currentRecord = await prisma.deceasedRecord.findUnique({
+      where: { id },
+      select: { status: true, chamberId: true }
     });
-    res.json(deceased);
+
+    if (!currentRecord) {
+      return res.status(404).json({ error: 'Record not found' });
+    }
+
+    // Handle automatic release
+    if (['RELEASED', 'PROCESSED'].includes(updateData.status) && currentRecord.chamberId) {
+      const record = await prisma.$transaction(async (tx) => {
+        const updatedRecord = await tx.deceasedRecord.update({
+          where: { id },
+          data: {
+            ...updateData,
+            chamberId: null,
+            chamberUnitName: null
+          }
+        });
+
+        await tx.chamber.update({
+          where: { id: currentRecord.chamberId },
+          data: {
+            currentOccupancy: { decrement: 1 },
+            status: 'AVAILABLE'
+          }
+        });
+
+        return updatedRecord;
+      });
+
+      return res.json(record);
+    }
+
+    // Normal update without chamber changes
+    const record = await prisma.deceasedRecord.update({
+      where: { id },
+      data: updateData
+    });
+
+    res.json(record);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
 
-// Delete a deceased record
-exports.deleteDeceased = async (req, res) => {
+export const deleteDeceasedRecord = async (req, res) => {
   try {
     await prisma.deceasedRecord.delete({
       where: { id: req.params.id },
