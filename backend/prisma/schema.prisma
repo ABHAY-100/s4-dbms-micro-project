@@ -50,7 +50,6 @@ model DeceasedRecord {
   handledBy           User           @relation("HandledBy", fields: [userId], references: [id])
   userId              String         @db.ObjectId
   services            Service[]
-  releaseInfo         ReleaseRecord?
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
 
@@ -127,17 +126,4 @@ enum ServiceStatus {
   IN_PROGRESS
   COMPLETED
   CANCELLED
-}
-
-model ReleaseRecord {
-  id           String         @id @default(auto()) @map("_id") @db.ObjectId
-  deceased     DeceasedRecord @relation(fields: [deceasedId], references: [id])
-  deceasedId   String         @unique @db.ObjectId
-  releasedTo   String
-  relationship String
-  releaseDate  DateTime
-  documents    String[]
-  remarks      String?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
 }

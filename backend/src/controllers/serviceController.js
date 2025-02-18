@@ -2,10 +2,10 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Create service
 export const createService = async (req, res) => {
   try {
-    const { name, description, type, cost, deceasedId } = req.body;
+    const { name, description, type, cost } = req.body;
+    const deceasedId = req.query.deceased_id;
 
     const deceased = await prisma.deceasedRecord.findUnique({
       where: { id: deceasedId }
@@ -31,93 +31,124 @@ export const createService = async (req, res) => {
   }
 };
 
-// Get services by deceased ID
 export const getServicesByDeceasedId = async (req, res) => {
   try {
-    const { deceasedId } = req.params;
+    const { deceased_id } = req.query;
 
     const services = await prisma.service.findMany({
-      where: { deceasedId }
+      where: { deceasedId: deceased_id },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        type: true,
+        cost: true,
+        status: true,
+        completedAt: true,
+        deceased: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            status: true,
+          },
+        },
+      },
     });
 
-    res.status(200).json(services);
+    res.json(services);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(400).json({ error: error.message });
   }
 };
 
-// Update service status
-export const updateServiceStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    const service = await prisma.service.update({
-      where: { id },
-      data: {
-        status,
-        ...(status === 'COMPLETED' && { completedAt: new Date() })
-      }
-    });
-
-    res.status(200).json(service);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Update service details
 export const updateService = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { name, description, type, cost } = req.body;
+    const { service_id } = req.query;
+    const { status, name, description, type, cost } = req.body;
 
-    const service = await prisma.service.update({
-      where: { id },
-      data: {
-        name,
-        description,
-        type,
-        cost
-      }
+    if (status && !['PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].includes(status)) {
+      return res.status(400).json({
+        error: "Invalid status. Status must be one of: PENDING, IN_PROGRESS, COMPLETED, CANCELLED",
+      });
+    }
+
+    if (type && !['CARE', 'RITUAL', 'LOGISTICS', 'OTHER'].includes(type)) {
+      return res.status(400).json({
+        error: "Invalid type. Type must be one of: CARE, RITUAL, LOGISTICS, OTHER",
+      });
+    }
+
+    const updateData = {};
+    if (status) updateData.status = status;
+    if (name) updateData.name = name;
+    if (description) updateData.description = description;
+    if (type) updateData.type = type;
+    if (cost) updateData.cost = parseFloat(cost);
+
+    if (status === 'COMPLETED') {
+      updateData.completedAt = new Date();
+    }
+
+    const updatedService = await prisma.service.update({
+      where: { id: service_id },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        type: true,
+        cost: true,
+        status: true,
+        completedAt: true,
+        deceased: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            status: true,
+          },
+        },
+      },
     });
 
-    res.status(200).json(service);
+    res.json({
+      message: "Service updated successfully",
+      service: updatedService,
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(400).json({ error: error.message });
   }
 };
 
-// Delete service
 export const deleteService = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { service_id } = req.query;
 
     await prisma.service.delete({
-      where: { id }
+      where: { id: service_id }
     });
 
-    res.status(204).send();
+    res.status(200).send({ message: 'Service deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Get service statistics
 export const getServiceStats = async (req, res) => {
   try {
     const stats = await prisma.service.groupBy({
-      by: ['type', 'status'],
+      by: ['status', 'type'],
       _count: {
-        _all: true
+        _all: true,
       },
       _sum: {
-        cost: true
-      }
+        cost: true,
+      },
     });
 
-    res.status(200).json(stats);
+    res.json(stats);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(400).json({ error: error.message });
   }
 };

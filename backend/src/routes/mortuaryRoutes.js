@@ -2,6 +2,7 @@ import express from 'express';
 import { createChamber, getAllChambers, getChamber, updateChamber, deleteChamber } from '../controllers/chamberController.js';
 import { createDeceasedRecord, getAllDeceasedRecords, getDeceasedRecord, updateDeceasedRecord, deleteDeceasedRecord } from '../controllers/deceasedController.js';
 import { createNextOfKin, getNextOfKinByDeceasedId, updateNextOfKin, deleteNextOfKin } from '../controllers/nextOfKinController.js';
+import { getServicesByDeceasedId, updateService, deleteService, getServiceStats, createService } from '../controllers/serviceController.js';
 import { userAuth } from '../middleware/userAuth.js';
 
 const router = express.Router();
@@ -22,5 +23,12 @@ router.post('/next-of-kin', userAuth, createNextOfKin);
 router.get('/next-of-kin', userAuth, getNextOfKinByDeceasedId);
 router.put('/next-of-kin', userAuth, updateNextOfKin);
 router.delete('/next-of-kin', userAuth, deleteNextOfKin);
+
+router.post('/services', userAuth, createService);
+router.get('/services', userAuth, getServicesByDeceasedId);
+router.get('/services/stats', userAuth, getServiceStats);
+router.put('/services', userAuth, updateService);
+router.delete('/services', userAuth, deleteService);
+
 
 export default router;
