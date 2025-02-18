@@ -1,32 +1,80 @@
 import { PrismaClient } from '@prisma/client';
-import { findAvailableChamber, findAvailableUnit } from '../utils/chamberUtils.js';
 
 const prisma = new PrismaClient();
 
 export const createDeceasedRecord = async (req, res) => {
   try {
-    const recordData = { ...req.body };
-    
-    // Find available chamber and unit
-    const chamber = await findAvailableChamber();
-    const { unitNumber, unitName } = await findAvailableUnit(chamber.id);
+    const {
+      firstName,
+      lastName,
+      dateOfBirth,
+      dateOfDeath,
+      timeOfDeath,
+      causeOfDeath,
+      gender,
+      chamberId,
+      chamberUnitName
+    } = req.body;
 
-    // Create record with chamber assignment
+    const chamber = await prisma.chamber.findUnique({
+      where: { id: chamberId }
+    });
+
+    if (!chamber) {
+      return res.status(404).json({ error: 'Chamber not found' });
+    }
+
+    if (chamber.status === 'MAINTENANCE' || chamber.status === 'OUT_OF_ORDER') {
+      return res.status(400).json({ 
+        error: `Cannot assign deceased to chamber ${chamber.name}. Chamber is under ${chamber.status.toLowerCase()}`
+      });
+    }
+
+    if (chamber.currentOccupancy >= chamber.capacity) {
+      return res.status(400).json({ 
+        error: `Cannot assign deceased to chamber ${chamber.name}. Chamber is at full capacity (${chamber.capacity} units)`
+      });
+    }
+
     const record = await prisma.$transaction(async (tx) => {
       const newRecord = await tx.deceasedRecord.create({
         data: {
-          ...recordData,
-          chamberId: chamber.id,
-          chamberUnitName: unitName,
-          status: 'IN_FACILITY',
-          handledBy: {
-            connect: { id: req.user.id }
+          firstName,
+          lastName,
+          dateOfBirth: new Date(dateOfBirth),
+          dateOfDeath: new Date(dateOfDeath),
+          timeOfDeath,
+          causeOfDeath,
+          gender,
+          chamber: { connect: { id: chamberId } },
+          chamberUnitName,
+          handledBy: { connect: { id: req.user.id } }
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          dateOfBirth: true,
+          dateOfDeath: true,
+          timeOfDeath: true,
+          causeOfDeath: true,
+          gender: true,
+          status: true,
+          chamberUnitName: true,
+          chamber: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+              capacity: true,
+              currentOccupancy: true
+            }
           }
         }
       });
 
       await tx.chamber.update({
-        where: { id: chamber.id },
+        where: { id: chamberId },
         data: {
           currentOccupancy: { increment: 1 },
           status: chamber.currentOccupancy + 1 >= chamber.capacity ? 'OCCUPIED' : 'AVAILABLE'
@@ -44,14 +92,28 @@ export const createDeceasedRecord = async (req, res) => {
 
 export const getAllDeceasedRecords = async (req, res) => {
   try {
-    const deceased = await prisma.deceasedRecord.findMany({
-      include: {
-        chamber: true,
-        nextOfKin: true,
-        services: true,
-      },
+    const records = await prisma.deceasedRecord.findMany({
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        dateOfBirth: true,
+        dateOfDeath: true,
+        timeOfDeath: true,
+        causeOfDeath: true,
+        gender: true,
+        status: true,
+        chamberUnitName: true,
+        chamber: {
+          select: {
+            id: true,
+            name: true,
+            status: true
+          }
+        }
+      }
     });
-    res.json(deceased);
+    res.json(records);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -59,19 +121,37 @@ export const getAllDeceasedRecords = async (req, res) => {
 
 export const getDeceasedRecord = async (req, res) => {
   try {
-    const deceased = await prisma.deceasedRecord.findUnique({
-      where: { id: req.params.id },
-      include: {
-        chamber: true,
-        nextOfKin: true,
-        services: true,
-        releaseInfo: true,
-      },
+    const { id } = req.params;
+    const record = await prisma.deceasedRecord.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        dateOfBirth: true,
+        dateOfDeath: true,
+        timeOfDeath: true,
+        causeOfDeath: true,
+        gender: true,
+        status: true,
+        chamberUnitName: true,
+        chamber: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            capacity: true,
+            currentOccupancy: true
+          }
+        }
+      }
     });
-    if (!deceased) {
+
+    if (!record) {
       return res.status(404).json({ error: 'Deceased record not found' });
     }
-    res.json(deceased);
+
+    res.json(record);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -82,45 +162,59 @@ export const updateDeceasedRecord = async (req, res) => {
     const { id } = req.params;
     const updateData = { ...req.body };
 
-    const currentRecord = await prisma.deceasedRecord.findUnique({
-      where: { id },
-      select: { status: true, chamberId: true }
-    });
-
-    if (!currentRecord) {
-      return res.status(404).json({ error: 'Record not found' });
+    if (updateData.dateOfBirth) {
+      updateData.dateOfBirth = new Date(updateData.dateOfBirth);
+    }
+    if (updateData.dateOfDeath) {
+      updateData.dateOfDeath = new Date(updateData.dateOfDeath);
     }
 
-    // Handle automatic release
-    if (['RELEASED', 'PROCESSED'].includes(updateData.status) && currentRecord.chamberId) {
-      const record = await prisma.$transaction(async (tx) => {
-        const updatedRecord = await tx.deceasedRecord.update({
-          where: { id },
-          data: {
-            ...updateData,
-            chamberId: null,
-            chamberUnitName: null
-          }
-        });
-
-        await tx.chamber.update({
-          where: { id: currentRecord.chamberId },
-          data: {
-            currentOccupancy: { decrement: 1 },
-            status: 'AVAILABLE'
-          }
-        });
-
-        return updatedRecord;
+    if (updateData.chamberId) {
+      const newChamber = await prisma.chamber.findUnique({
+        where: { id: updateData.chamberId }
       });
 
-      return res.json(record);
+      if (!newChamber) {
+        return res.status(404).json({ error: 'New chamber not found' });
+      }
+
+      if (newChamber.status === 'MAINTENANCE' || newChamber.status === 'OUT_OF_ORDER') {
+        return res.status(400).json({ 
+          error: `Cannot assign deceased to chamber ${newChamber.name}. Chamber is under ${newChamber.status.toLowerCase()}`
+        });
+      }
+
+      if (newChamber.currentOccupancy >= newChamber.capacity) {
+        return res.status(400).json({ 
+          error: `Cannot assign deceased to chamber ${newChamber.name}. Chamber is at full capacity (${newChamber.capacity} units)`
+        });
+      }
     }
 
-    // Normal update without chamber changes
     const record = await prisma.deceasedRecord.update({
       where: { id },
-      data: updateData
+      data: updateData,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        dateOfBirth: true,
+        dateOfDeath: true,
+        timeOfDeath: true,
+        causeOfDeath: true,
+        gender: true,
+        status: true,
+        chamberUnitName: true,
+        chamber: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            capacity: true,
+            currentOccupancy: true
+          }
+        }
+      }
     });
 
     res.json(record);
@@ -131,10 +225,28 @@ export const updateDeceasedRecord = async (req, res) => {
 
 export const deleteDeceasedRecord = async (req, res) => {
   try {
-    await prisma.deceasedRecord.delete({
-      where: { id: req.params.id },
+    const { id } = req.params;
+    
+    await prisma.$transaction(async (tx) => {
+      const record = await tx.deceasedRecord.findUnique({
+        where: { id },
+        include: { chamber: true }
+      });
+
+      if (record?.chamber) {
+        await tx.chamber.update({
+          where: { id: record.chamber.id },
+          data: {
+            currentOccupancy: { decrement: 1 },
+            status: 'AVAILABLE'
+          }
+        });
+      }
+
+      await tx.deceasedRecord.delete({ where: { id } });
     });
-    res.status(204).send();
+
+    res.json({ message: 'Record deleted successfully' });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
