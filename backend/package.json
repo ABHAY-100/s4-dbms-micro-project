@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/app.cjs",
     "dev": "nodemon src/app.cjs",
-    "postinstall": "prisma generate",
+    "build": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push"
   },
