@@ -1,8 +1,8 @@
-import { PrismaClient } from "@prisma/client";
+const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 
-export const createDeceasedRecord = async (req, res) => {
+const createDeceasedRecord = async (req, res) => {
   try {
     const {
       firstName,
@@ -44,10 +44,10 @@ export const createDeceasedRecord = async (req, res) => {
       });
     }
 
-    let createdRecord;
+    let finalRecord;
     try {
       await prisma.$transaction(async (tx) => {
-        createdRecord = await tx.deceasedRecord.create({
+        const record = await tx.deceasedRecord.create({
           data: {
             firstName,
             lastName,
@@ -56,7 +56,7 @@ export const createDeceasedRecord = async (req, res) => {
             timeOfDeath,
             causeOfDeath,
             gender,
-            chamber: { connect: { id: chamberId } },
+            chamberId,
             chamberUnitName,
             handledBy: { connect: { id: req.user.id } },
             personalBelongings,
@@ -94,8 +94,12 @@ export const createDeceasedRecord = async (req, res) => {
       });
     }
 
-    const finalRecord = await prisma.deceasedRecord.findUnique({
-      where: { id: createdRecord.id },
+    finalRecord = await prisma.deceasedRecord.findFirst({
+      where: {
+        firstName,
+        lastName,
+        chamberId,
+      },
       select: {
         id: true,
         firstName: true,
@@ -107,8 +111,6 @@ export const createDeceasedRecord = async (req, res) => {
         gender: true,
         status: true,
         chamberUnitName: true,
-        identificationMarks: true,
-        personalBelongings: true,
         chamber: {
           select: {
             id: true,
@@ -116,6 +118,17 @@ export const createDeceasedRecord = async (req, res) => {
             status: true,
             capacity: true,
             currentOccupancy: true,
+          },
+        },
+        nextOfKin: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            relationship: true,
+            phoneNumber: true,
+            email: true,
+            address: true,
           },
         },
       },
@@ -129,7 +142,7 @@ export const createDeceasedRecord = async (req, res) => {
   }
 };
 
-export const getAllDeceasedRecords = async (req, res) => {
+const getAllDeceasedRecords = async (req, res) => {
   try {
     const records = await prisma.deceasedRecord.findMany({
       select: {
@@ -165,11 +178,11 @@ export const getAllDeceasedRecords = async (req, res) => {
     });
     res.json(records);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(400).json({ error: error.message });
   }
 };
 
-export const getDeceasedRecord = async (req, res) => {
+const getDeceasedRecord = async (req, res) => {
   try {
     const record = await prisma.deceasedRecord.findUnique({
       where: { id: req.query.deceased_id },
@@ -205,7 +218,7 @@ export const getDeceasedRecord = async (req, res) => {
             email: true,
             address: true,
           },
-        }
+        },
       },
     });
 
@@ -215,11 +228,11 @@ export const getDeceasedRecord = async (req, res) => {
 
     res.json(record);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(400).json({ error: error.message });
   }
 };
 
-export const updateDeceasedRecord = async (req, res) => {
+const updateDeceasedRecord = async (req, res) => {
   try {
     const deceased_id = req.query.id;
     const { status } = req.body;
@@ -242,18 +255,15 @@ export const updateDeceasedRecord = async (req, res) => {
 
     let updatedRecord;
     await prisma.$transaction(async (tx) => {
-      // If status is RELEASED or PROCESSED and there's a chamber assigned
       if (["RELEASED", "PROCESSED"].includes(status) && record.chamber) {
-        // First update deceased record without chamber info
         updatedRecord = await tx.deceasedRecord.update({
           where: { id: deceased_id },
           data: {
             status,
-            chamber: { disconnect: true }, // This will handle both chamberId and chamberUnitName
+            chamber: { disconnect: true },
           },
         });
 
-        // Then update chamber occupancy
         const chamber = await tx.chamber.findUnique({
           where: { id: record.chamber.id },
           include: { deceased: true },
@@ -271,7 +281,6 @@ export const updateDeceasedRecord = async (req, res) => {
           });
         }
       } else {
-        // Just update the status without changing chamber allocation
         updatedRecord = await tx.deceasedRecord.update({
           where: { id: deceased_id },
           data: { status },
@@ -288,7 +297,7 @@ export const updateDeceasedRecord = async (req, res) => {
   }
 };
 
-export const deleteDeceasedRecord = async (req, res) => {
+const deleteDeceasedRecord = async (req, res) => {
   try {
     await prisma.$transaction(async (tx) => {
       const record = await tx.deceasedRecord.findUnique({
@@ -328,4 +337,12 @@ export const deleteDeceasedRecord = async (req, res) => {
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
+};
+
+module.exports = {
+  createDeceasedRecord,
+  getAllDeceasedRecords,
+  getDeceasedRecord,
+  updateDeceasedRecord,
+  deleteDeceasedRecord,
 };

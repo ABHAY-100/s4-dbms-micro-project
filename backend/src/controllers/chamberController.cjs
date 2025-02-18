@@ -1,8 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
-export const createChamber = async (req, res) => {
+const createChamber = async (req, res) => {
   try {
     const { name, capacity } = req.body;
     
@@ -46,7 +46,7 @@ export const createChamber = async (req, res) => {
   }
 };
 
-export const getAllChambers = async (req, res) => {
+const getAllChambers = async (req, res) => {
   try {
     const chambers = await prisma.chamber.findMany({
       select: {
@@ -72,7 +72,7 @@ export const getAllChambers = async (req, res) => {
   }
 };
 
-export const getChamber = async (req, res) => {
+const getChamber = async (req, res) => {
   try {
     const chamber = await prisma.chamber.findUnique({
       where: { name: req.query.chamber_name },
@@ -104,7 +104,7 @@ export const getChamber = async (req, res) => {
   }
 };
 
-export const updateChamber = async (req, res) => {
+const updateChamber = async (req, res) => {
   try {
     const name = req.query.chamber_name;
     const { status, capacity } = req.body;
@@ -163,7 +163,7 @@ export const updateChamber = async (req, res) => {
   }
 };
 
-export const deleteChamber = async (req, res) => {
+const deleteChamber = async (req, res) => {
   try {
     const name = req.query.chamber_name;
     const chamber = await prisma.chamber.findUnique({
@@ -184,4 +184,12 @@ export const deleteChamber = async (req, res) => {
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
+};
+
+module.exports = {
+  createChamber,
+  getAllChambers,
+  getChamber,
+  updateChamber,
+  deleteChamber
 };

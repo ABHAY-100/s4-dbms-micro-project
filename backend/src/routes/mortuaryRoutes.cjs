@@ -1,9 +1,36 @@
-import express from 'express';
-import { createChamber, getAllChambers, getChamber, updateChamber, deleteChamber } from '../controllers/chamberController.js';
-import { createDeceasedRecord, getAllDeceasedRecords, getDeceasedRecord, updateDeceasedRecord, deleteDeceasedRecord } from '../controllers/deceasedController.js';
-import { createNextOfKin, getNextOfKinByDeceasedId, updateNextOfKin, deleteNextOfKin } from '../controllers/nextOfKinController.js';
-import { getServicesByDeceasedId, updateService, deleteService, getServiceStats, createService } from '../controllers/serviceController.js';
-import { userAuth } from '../middleware/userAuth.js';
+const express = require('express');
+const userAuth = require('../middleware/userAuth.cjs');
+
+const {
+  createChamber,
+  getAllChambers,
+  getChamber,
+  updateChamber,
+  deleteChamber
+} = require('../controllers/chamberController.cjs');
+
+const {
+  createDeceasedRecord,
+  getAllDeceasedRecords,
+  getDeceasedRecord,
+  updateDeceasedRecord,
+  deleteDeceasedRecord
+} = require('../controllers/deceasedController.cjs');
+
+const {
+  createNextOfKin,
+  getNextOfKinByDeceasedId,
+  updateNextOfKin,
+  deleteNextOfKin
+} = require('../controllers/nextOfKinController.cjs');
+
+const {
+  createService,
+  getServicesByDeceasedId,
+  updateService,
+  deleteService,
+  getServiceStats
+} = require('../controllers/serviceController.cjs');
 
 const router = express.Router();
 
@@ -30,5 +57,4 @@ router.get('/services/stats', userAuth, getServiceStats);
 router.put('/services', userAuth, updateService);
 router.delete('/services', userAuth, deleteService);
 
-
-export default router;
+module.exports = router;

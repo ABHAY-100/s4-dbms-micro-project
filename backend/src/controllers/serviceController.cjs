@@ -1,8 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 
-export const createService = async (req, res) => {
+const createService = async (req, res) => {
   try {
     const { name, description, type, cost } = req.body;
     const deceasedId = req.query.deceased_id;
@@ -20,18 +20,35 @@ export const createService = async (req, res) => {
         name,
         description,
         type,
-        cost,
+        cost: parseFloat(cost),
         deceasedId
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        type: true,
+        cost: true,
+        status: true,
+        completedAt: true,
+        deceased: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            status: true
+          }
+        }
       }
     });
 
-    res.status(201).json(service);
+    res.status(201).json({ message: 'Service created successfully', service });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-export const getServicesByDeceasedId = async (req, res) => {
+const getServicesByDeceasedId = async (req, res) => {
   try {
     const { deceased_id } = req.query;
 
@@ -62,7 +79,7 @@ export const getServicesByDeceasedId = async (req, res) => {
   }
 };
 
-export const updateService = async (req, res) => {
+const updateService = async (req, res) => {
   try {
     const { service_id } = req.query;
     const { status, name, description, type, cost } = req.body;
@@ -121,7 +138,7 @@ export const updateService = async (req, res) => {
   }
 };
 
-export const deleteService = async (req, res) => {
+const deleteService = async (req, res) => {
   try {
     const { service_id } = req.query;
 
@@ -135,7 +152,7 @@ export const deleteService = async (req, res) => {
   }
 };
 
-export const getServiceStats = async (req, res) => {
+const getServiceStats = async (req, res) => {
   try {
     const stats = await prisma.service.groupBy({
       by: ['status', 'type'],
@@ -151,4 +168,12 @@ export const getServiceStats = async (req, res) => {
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
+};
+
+module.exports = {
+  createService,
+  getServicesByDeceasedId,
+  updateService,
+  deleteService,
+  getServiceStats
 };

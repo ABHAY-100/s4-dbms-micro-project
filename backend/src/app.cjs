@@ -1,9 +1,9 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import cookieParser from 'cookie-parser';
-import userRoutes from './routes/userRoutes.js';
-import mortuaryRoutes from './routes/mortuaryRoutes.js';
+const express = require('express');
+const cors = require('cors');
+const dotenv = require('dotenv');
+const cookieParser = require('cookie-parser');
+const userRoutes = require('./routes/userRoutes.cjs');
+const mortuaryRoutes = require('./routes/mortuaryRoutes.cjs');
 
 dotenv.config();
 

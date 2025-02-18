@@ -1,12 +1,12 @@
-import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import validator from 'validator';
-import disposableEmailDomains from 'disposable-email-domains' assert { type: "json" };
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const validator = require('validator');
+const disposableEmailDomains = require('disposable-email-domains');
 
 const prisma = new PrismaClient();
 
-export const register = async (req, res) => {
+const register = async (req, res) => {
   try {
     const { email, password, name, role, phone, status } = req.body;
 
@@ -74,7 +74,7 @@ export const register = async (req, res) => {
   }
 };
 
-export const login = async (req, res) => {
+const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -114,7 +114,7 @@ export const login = async (req, res) => {
   }
 };
 
-export const getProfile = async (req, res) => {
+const getProfile = async (req, res) => {
   const userResponse = {
     id: req.user.id,
     email: req.user.email,
@@ -127,7 +127,7 @@ export const getProfile = async (req, res) => {
   res.json({ user: userResponse });
 };
 
-export const updateUser = async (req, res) => {
+const updateUser = async (req, res) => {
   try {
     const updates = Object.keys(req.body);
     const allowedUpdates = ["name", "password", "role", "phone"];
@@ -178,7 +178,7 @@ export const updateUser = async (req, res) => {
   }
 };
 
-export const getAllStaff = async (req, res) => {
+const getAllStaff = async (req, res) => {
   try {
     const staff = await prisma.user.findMany({
       where: {
@@ -210,7 +210,7 @@ export const getAllStaff = async (req, res) => {
   }
 };
 
-export const updateUserStatus = async (req, res) => {
+const updateUserStatus = async (req, res) => {
   try {
     const { status } = req.body;
 
@@ -232,7 +232,7 @@ export const updateUserStatus = async (req, res) => {
   }
 };
 
-export const logout = async (req, res) => {
+const logout = async (req, res) => {
   try {
     res.clearCookie("death_set_auth_token", {
       httpOnly: true,
@@ -243,4 +243,14 @@ export const logout = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+};
+
+module.exports = {
+  register,
+  login,
+  logout,
+  getProfile,
+  updateUser,
+  getAllStaff,
+  updateUserStatus
 };

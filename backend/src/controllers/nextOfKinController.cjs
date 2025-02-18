@@ -1,8 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 
-export const createNextOfKin = async (req, res) => {
+const createNextOfKin = async (req, res) => {
   try {
     const { firstName, lastName, relationship, phoneNumber, email, address } = req.body;
     const deceasedId = req.query.deceased_id;
@@ -50,7 +50,7 @@ export const createNextOfKin = async (req, res) => {
   }
 };
 
-export const getNextOfKinByDeceasedId = async (req, res) => {
+const getNextOfKinByDeceasedId = async (req, res) => {
   try {
     const { deceased_id } = req.query;
 
@@ -64,7 +64,7 @@ export const getNextOfKinByDeceasedId = async (req, res) => {
   }
 };
 
-export const updateNextOfKin = async (req, res) => {
+const updateNextOfKin = async (req, res) => {
   try {
     const { kin_id } = req.query;
     const { firstName, lastName, relationship, phoneNumber, email, address } = req.body;
@@ -87,7 +87,7 @@ export const updateNextOfKin = async (req, res) => {
   }
 };
 
-export const deleteNextOfKin = async (req, res) => {
+const deleteNextOfKin = async (req, res) => {
   try {
     const { kin_id } = req.query;
 
@@ -99,4 +99,11 @@ export const deleteNextOfKin = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+};
+
+module.exports = {
+  createNextOfKin,
+  getNextOfKinByDeceasedId,
+  updateNextOfKin,
+  deleteNextOfKin
 };

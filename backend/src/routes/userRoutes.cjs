@@ -1,7 +1,15 @@
-import express from 'express';
-import { register, login, getProfile, updateUser, getAllStaff, updateUserStatus, logout } from '../controllers/userController.js';
-import { userAuth } from '../middleware/userAuth.js';
-import { adminAuth } from '../middleware/adminAuth.js';
+const express = require('express');
+const userAuth = require('../middleware/userAuth.cjs');
+const adminAuth = require('../middleware/adminAuth.cjs');
+const { 
+  register, 
+  login, 
+  logout, 
+  getProfile, 
+  updateUser, 
+  getAllStaff, 
+  updateUserStatus 
+} = require('../controllers/userController.cjs');
 
 const router = express.Router();
 
@@ -14,4 +22,4 @@ router.patch('/update', userAuth, updateUser);
 router.get('/staff', userAuth, adminAuth, getAllStaff);
 router.put('/staff/status', userAuth, adminAuth, updateUserStatus);
 
-export default router;
+module.exports = router;
