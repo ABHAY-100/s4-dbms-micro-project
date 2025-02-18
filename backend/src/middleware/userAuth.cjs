@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 const userAuth = async (req, res, next) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    const token = req.cookies.death_set_auth_token;
     
     if (!token) {
       throw new Error();
