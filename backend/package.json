@@ -1,14 +1,12 @@
 {
   "name": "mortuary-management-system-backend",
   "version": "1.0.0",
-  "main": "dist/app.cjs",
+  "main": "src/app.cjs",
   "type": "commonjs",
   "scripts": {
-    "start": "node dist/app.cjs",
+    "start": "node src/app.cjs",
     "dev": "nodemon src/app.cjs",
-    "build": "npm run clean && npm run copy-files",
-    "clean": "rimraf dist",
-    "copy-files": "copyfiles -u 1 \"src/**/*\" dist",
+    "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push"
   },
@@ -25,11 +23,13 @@
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.0",
+    "prisma": "^6.3.1",
     "validator": "^13.9.0"
   },
   "devDependencies": {
-    "copyfiles": "^2.4.1",
-    "nodemon": "^2.0.22",
-    "rimraf": "^5.0.0"
+    "nodemon": "^2.0.22"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }
