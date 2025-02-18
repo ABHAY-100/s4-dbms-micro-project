@@ -90,7 +90,7 @@ export const getChamber = async (req, res) => {
             chamberUnitName: true,
             status: true
           }
-        }
+        },
       }
     });
 

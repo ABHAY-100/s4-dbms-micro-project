@@ -2,10 +2,10 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Create next of kin
 export const createNextOfKin = async (req, res) => {
   try {
-    const { firstName, lastName, relationship, phoneNumber, email, address, deceasedId } = req.body;
+    const { firstName, lastName, relationship, phoneNumber, email, address } = req.body;
+    const deceasedId = req.query.deceased_id;
 
     const deceased = await prisma.deceasedRecord.findUnique({
       where: { id: deceasedId }
@@ -24,22 +24,38 @@ export const createNextOfKin = async (req, res) => {
         email,
         address,
         deceasedId
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        relationship: true,
+        phoneNumber: true,
+        email: true,
+        address: true,
+        deceased: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            status: true
+          }
+        }
       }
     });
 
-    res.status(201).json(nextOfKin);
+    res.status(201).json({ message: 'Next of kin created successfully', nextOfKin});
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Get next of kin by deceased ID
 export const getNextOfKinByDeceasedId = async (req, res) => {
   try {
-    const { deceasedId } = req.params;
+    const { deceased_id } = req.query;
 
     const nextOfKin = await prisma.nextOfKin.findMany({
-      where: { deceasedId }
+      where: { deceasedId: deceased_id }
     });
 
     res.status(200).json(nextOfKin);
@@ -48,14 +64,13 @@ export const getNextOfKinByDeceasedId = async (req, res) => {
   }
 };
 
-// Update next of kin
 export const updateNextOfKin = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { kin_id } = req.query;
     const { firstName, lastName, relationship, phoneNumber, email, address } = req.body;
 
     const nextOfKin = await prisma.nextOfKin.update({
-      where: { id },
+      where: { id: kin_id },
       data: {
         firstName,
         lastName,
@@ -72,16 +87,15 @@ export const updateNextOfKin = async (req, res) => {
   }
 };
 
-// Delete next of kin
 export const deleteNextOfKin = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { kin_id } = req.query;
 
     await prisma.nextOfKin.delete({
-      where: { id }
+      where: { id: kin_id }
     });
 
-    res.status(204).send();
+    res.status(200).send({ message: 'Next of kin deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
