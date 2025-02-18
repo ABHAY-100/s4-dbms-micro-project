@@ -36,7 +36,7 @@ export const createChamber = async (req, res) => {
         status: true
       }
     });
-    res.status(201).json(chamber);
+    res.status(201).send({ message: `Chamber ${name} created successfully` , chamber });
   } catch (error) {
     if (error.code === 'P2002' && error.meta?.target?.includes('name')) {
       res.status(400).json({ error: `Chamber with this name already exists` });
@@ -74,9 +74,8 @@ export const getAllChambers = async (req, res) => {
 
 export const getChamber = async (req, res) => {
   try {
-    const { id } = req.params;
     const chamber = await prisma.chamber.findUnique({
-      where: { id },
+      where: { name: req.query.chamber_name },
       select: {
         id: true,
         name: true,
@@ -131,10 +130,22 @@ export const updateChamber = async (req, res) => {
       });
     }
 
+    let newStatus = status;
+    // If capacity is being updated, check if we need to update status
+    if (capacity && !status) {
+      if (capacity > chamber.capacity && chamber.status === 'OCCUPIED') {
+        // If increasing capacity and chamber was full, set to AVAILABLE
+        newStatus = 'AVAILABLE';
+      } else if (chamber.currentOccupancy >= capacity) {
+        // If new capacity is less than or equal to current occupancy, set to OCCUPIED
+        newStatus = 'OCCUPIED';
+      }
+    }
+
     const updatedChamber = await prisma.chamber.update({
       where: { name },
       data: { 
-        status: status || undefined,
+        status: newStatus,
         capacity: capacity || undefined
       },
       select: {

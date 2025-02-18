@@ -6,15 +6,15 @@ import { userAuth } from '../middleware/userAuth.js';
 const router = express.Router();
 
 router.post('/chambers', userAuth, createChamber);
-router.get('/chambers', userAuth, getAllChambers);
 router.get('/chambers', userAuth, getChamber);
+router.get('/chambers/all', userAuth, getAllChambers);
 router.put('/chambers', userAuth, updateChamber);
 router.delete('/chambers', userAuth, deleteChamber);
 
 router.post('/deceased', userAuth, createDeceasedRecord);
-router.get('/deceased', userAuth, getAllDeceasedRecords);
-router.get('/deceased/:id', userAuth, getDeceasedRecord);
-router.put('/deceased/:id', userAuth, updateDeceasedRecord);
-router.delete('/deceased/:id', userAuth, deleteDeceasedRecord);
+router.get('/deceased/all', userAuth, getAllDeceasedRecords);
+router.get('/deceased', userAuth, getDeceasedRecord);
+router.put('/deceased', userAuth, updateDeceasedRecord);
+router.delete('/deceased', userAuth, deleteDeceasedRecord);
 
 export default router;
