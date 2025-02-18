@@ -55,7 +55,7 @@ const register = async (req, res) => {
     res.cookie("death_set_auth_token", token, {
       httpOnly: true,
       secure: true,
-      sameSite: "none",
+      sameSite: "strict",
       maxAge: 24 * 60 * 60 * 1000,
     });
 
@@ -95,7 +95,7 @@ const login = async (req, res) => {
     res.cookie("death_set_auth_token", token, {
       httpOnly: true,
       secure: true,
-      sameSite: "none",
+      sameSite: "strict",
       maxAge: 24 * 60 * 60 * 1000,
     });
 
