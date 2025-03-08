@@ -8,7 +8,7 @@ const mortuaryRoutes = require('./routes/mortuaryRoutes.cjs');
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.BACKEND_PORT || 5000;
 
 app.use(cors({
   origin: true,
