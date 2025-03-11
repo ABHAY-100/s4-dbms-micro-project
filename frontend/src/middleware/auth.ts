@@ -4,22 +4,18 @@ import { JwtPayload } from "../types";
 
 export function isAuthenticated(request: NextRequest): boolean {
   const token = request.cookies.get("death_set_auth_token")?.value;
-  console.log("Token found:", token ? "Yes" : "No");
 
-  if (!token) return false;
+  if (!token) {
+    console.error("Token not found");
+    return false;
+  };
 
   try {
     const secret = process.env.JWT_SECRET;
 
     if (!secret) {
-      console.warn(
-        "JWT_SECRET not defined in environment variables, using fallback secret"
-      );
-      const decoded = jwt.verify(
-        token,
-        "death_set_super_secret_key_2024"
-      ) as JwtPayload;
-      return !isTokenExpired(decoded);
+      console.error("JWT secret not found");
+      return false;
     }
 
     const decoded = jwt.verify(token, secret) as JwtPayload;
