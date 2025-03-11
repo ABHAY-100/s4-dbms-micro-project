@@ -2,35 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import axiosInstance from "@/lib/axios";
 import { AxiosError } from "axios";
-
-interface User {
-  id: string;
-  email: string;
-  name?: string;
-  role?: string;
-}
-
-export interface RegisterUserData {
-  email: string;
-  password: string;
-  name: string;
-}
-
-export interface AuthState {
-  user: User | null;
-  token: string | boolean | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  errorMessage: string | null;
-
-  login: (
-    email: string,
-    password: string,
-    skipPasswordCheck?: boolean
-  ) => Promise<void>;
-  register: (userData: RegisterUserData) => Promise<void>;
-  logout: () => Promise<void>;
-}
+import { RegisterUserData, AuthState } from "@/types";
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -115,20 +87,18 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         set({ isLoading: true, errorMessage: null });
         try {
-          // Try to logout on server, but handle 401 errors gracefully
           try {
             await axiosInstance.post("/users/logout");
           } catch (logoutError) {
-            // If it's a 401 error, we can still proceed with local logout
             const axiosError = logoutError as AxiosError;
             if (axiosError.response?.status !== 401) {
-              throw logoutError; // Re-throw if it's not a 401
+              throw logoutError;
             }
-            // For 401, just log and continue with client-side logout
-            console.warn("Server logout failed with 401, proceeding with local logout");
+            console.warn(
+              "Server logout failed with 401, proceeding with local logout"
+            );
           }
-          
-          // Always clear the local state
+
           set({
             user: null,
             token: null,
@@ -141,7 +111,6 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             errorMessage:
               axiosError.response?.data?.message || "Failed to logout",
-            // Don't clear auth state on other errors
           });
           throw error;
         }
