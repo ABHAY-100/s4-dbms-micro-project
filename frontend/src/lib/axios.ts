@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useAuthStore } from '@/store/authStore';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 console.log("API URL:", API_URL);
@@ -11,9 +12,17 @@ const axiosInstance = axios.create({
   },
 });
 
-// Add request interceptor to log requests
+// Add request interceptor to log requests and add auth token
 axiosInstance.interceptors.request.use(
   (config) => {
+    // Get token from the auth store
+    const token = useAuthStore.getState().token;
+    
+    // If token exists, add it to the request headers
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
     // Don't log profile requests to reduce noise
     if (!config.url?.includes('profile')) {
       console.log(`${config.method?.toUpperCase()} ${config.url}`);
@@ -25,7 +34,7 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// Add response interceptor for logging and error handling
+// Add response interceptor for logging, error handling, and token expiration
 axiosInstance.interceptors.response.use(
   (response) => {
     // Don't log profile responses to reduce noise
@@ -34,7 +43,9 @@ axiosInstance.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+
     // Don't log profile errors to reduce noise
     if (!error.config.url?.includes('profile')) {
       console.error("API Error:", error.response?.status, error.response?.data);
@@ -50,6 +61,29 @@ axiosInstance.interceptors.response.use(
         window.location.href = "/login";
       }
     }
+
+    // If error is 401 (Unauthorized) and not already retrying
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      // Either attempt to refresh the token here or logout the user
+      try {
+        // Option 1: Logout the user when token is invalid
+        useAuthStore.getState().logout();
+        
+        // Option 2: Alternatively, you could implement token refresh logic
+        // const refreshed = await refreshToken();
+        // if (refreshed) {
+        //   originalRequest.headers.Authorization = `Bearer ${useAuthStore.getState().token}`;
+        //   return axios(originalRequest);
+        // }
+      } catch (refreshError) {
+        // If refresh fails, logout the user
+        useAuthStore.getState().logout();
+        return Promise.reject(refreshError);
+      }
+    }
+
     return Promise.reject(error);
   }
 );

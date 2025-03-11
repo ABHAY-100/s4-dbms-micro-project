@@ -1,5 +1,5 @@
-const jwt = require('jsonwebtoken');
-const { PrismaClient } = require('@prisma/client');
+const jwt = require("jsonwebtoken");
+const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 
@@ -17,8 +17,8 @@ const userAuth = async (req, res, next) => {
       select: {
         id: true,
         email: true,
-        role: true
-      }
+        role: true,
+      },
     });
 
     if (!user) {
@@ -29,7 +29,7 @@ const userAuth = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    res.status(401).json({ error: 'Please authenticate.' });
+    res.status(401).json({ error: "Please authenticate." });
   }
 };
 

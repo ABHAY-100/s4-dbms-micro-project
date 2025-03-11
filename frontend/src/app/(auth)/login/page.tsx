@@ -6,9 +6,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuthStore } from "@/store/authStore";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/store/authStore";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ApiError } from "@/types";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -32,7 +43,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.push("/dashboard");
+      router.push("/");
     }
   }, [isAuthenticated, router]);
 
@@ -40,66 +51,67 @@ export default function LoginPage() {
     try {
       setServerError(null);
       await login(data.email, data.password);
-      router.push("/dashboard");
-    } catch (error: any) {
+      router.push("/");
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
       setServerError(
-        error.response?.data?.error ||
+        apiError.response?.data?.error ||
           "Failed to login. Please check your credentials."
       );
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold">Mortuary Management System</h1>
-          <h2 className="mt-2 text-2xl font-semibold">Log In</h2>
-          <p className="mt-2 text-gray-600">
-            Enter your credentials to access your account
-          </p>
-        </div>
-
+    <Card className="w-full max-w-md border-2 shadow-none">
+      <CardHeader className="space-y-1 text-center flex flex-col items-center gap-[2px] mb-[10px]">
+        <CardTitle className="text-2xl font-bold">DeathSet</CardTitle>
+        <CardDescription className="text-md">
+          Sign in and pick up where you left off.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
         {serverError && (
-          <div className="p-3 bg-red-100 border border-red-200 text-red-700 rounded-md">
-            {serverError}
-          </div>
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{serverError}</AlertDescription>
+          </Alert>
         )}
-
-        <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-6">
-          <div className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
             <Input
-              label="Email Address"
+              id="email"
               type="email"
+              placeholder="name@example.com"
               {...register("email")}
-              error={errors.email?.message}
             />
-
-            <Input
-              label="Password"
-              type="password"
-              {...register("password")}
-              error={errors.password?.message}
-            />
+            {errors.email && (
+              <p className="text-sm text-destructive">{errors.email.message}</p>
+            )}
           </div>
-
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Password</Label>
+            </div>
+            <Input id="password" type="password" {...register("password")} />
+            {errors.password && (
+              <p className="text-sm text-destructive">
+                {errors.password.message}
+              </p>
+            )}
+          </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "Signing in..." : "Sign In"}
           </Button>
-
-          <div className="text-center mt-4">
-            <p className="text-sm text-gray-600">
-              Don&apos;t have an account?{" "}
-              <Link
-                href="/register"
-                className="text-blue-600 hover:text-blue-800"
-              >
-                Register here
-              </Link>
-            </p>
-          </div>
         </form>
-      </div>
-    </div>
+      </CardContent>
+      <CardFooter className="flex justify-center">
+        <p className="text-sm text-muted-foreground">
+          Don&apos;t have an account?{" "}
+          <Link href="/register" className="text-primary hover:underline">
+            Create an account
+          </Link>
+        </p>
+      </CardFooter>
+    </Card>
   );
 }

@@ -47,7 +47,7 @@ export function handleAuthRedirect(request: NextRequest): NextResponse | null {
   const authPath = isAuthPath(request.nextUrl.pathname);
 
   if (authenticated && authPath) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
   if (

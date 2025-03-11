@@ -1,14 +1,15 @@
-const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const validator = require('validator');
-const disposableEmailDomains = require('disposable-email-domains');
+const { PrismaClient } = require("@prisma/client");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const validator = require("validator");
+const disposableEmailDomains = require("disposable-email-domains");
 
 const prisma = new PrismaClient();
 
 const register = async (req, res) => {
   try {
-    const { email, password, name, role, phone, status } = req.body;
+    const { email, password, name, role, phoneNumber, status } = req.body;
+    phone = phoneNumber;
 
     if (!validator.isEmail(email)) {
       return res.status(400).json({ error: "Invalid email format" });
@@ -19,18 +20,24 @@ const register = async (req, res) => {
       return res.status(400).json({ error: "Invalid phone number format." });
     }
 
-    const emailDomain = email.split('@')[1];
+    const emailDomain = email.split("@")[1];
 
     if (disposableEmailDomains.includes(emailDomain)) {
-      return res.status(400).json({ error: "Temporary email addresses are not allowed" });
+      return res
+        .status(400)
+        .json({ error: "Temporary email addresses are not allowed" });
     }
 
-    const existingUserByEmail = await prisma.user.findUnique({ where: { email } });
+    const existingUserByEmail = await prisma.user.findUnique({
+      where: { email },
+    });
     if (existingUserByEmail) {
       return res.status(400).json({ error: "Email already exists" });
     }
 
-    const existingUserByPhone = await prisma.user.findUnique({ where: { phone } });
+    const existingUserByPhone = await prisma.user.findUnique({
+      where: { phone },
+    });
     if (existingUserByPhone) {
       return res.status(400).json({ error: "Phone number already exists" });
     }
@@ -44,7 +51,7 @@ const register = async (req, res) => {
         name,
         role,
         phone,
-        status
+        status,
       },
     });
 
@@ -66,9 +73,11 @@ const register = async (req, res) => {
       role: user.role,
       phone: user.phone,
       status: user.status,
-    }
+    };
 
-    res.status(201).json({ message: "User registered successfully", userDetails });
+    res
+      .status(201)
+      .json({ message: "User registered successfully", userDetails });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -99,14 +108,14 @@ const login = async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000,
     });
 
-    const userDetails  = {
+    const userDetails = {
       id: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
       phone: user.phone,
       status: user.status,
-    }
+    };
 
     res.json({ message: "User logged in successfully", userDetails });
   } catch (error) {
@@ -145,8 +154,8 @@ const updateUser = async (req, res) => {
         return res.status(400).json({ error: "Invalid phone number format." });
       }
 
-      const existingUserByPhone = await prisma.user.findUnique({ 
-        where: { phone: req.body.phone } 
+      const existingUserByPhone = await prisma.user.findUnique({
+        where: { phone: req.body.phone },
       });
       if (existingUserByPhone) {
         return res.status(400).json({ error: "Phone number already exists" });
@@ -170,7 +179,7 @@ const updateUser = async (req, res) => {
       role: user.role,
       phone: user.phone,
       status: user.status,
-    }
+    };
 
     res.json({ message: "User updated successfully", userDetails });
   } catch (error) {
@@ -184,7 +193,7 @@ const getAllStaff = async (req, res) => {
       where: {
         role: {
           in: ["STAFF"],
-        }
+        },
       },
       select: {
         id: true,
@@ -226,7 +235,10 @@ const updateUserStatus = async (req, res) => {
       },
     });
 
-    res.json({ message: "Staff status updated successfully", user: updatedUser });
+    res.json({
+      message: "Staff status updated successfully",
+      user: updatedUser,
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -252,5 +264,5 @@ module.exports = {
   getProfile,
   updateUser,
   getAllStaff,
-  updateUserStatus
+  updateUserStatus,
 };

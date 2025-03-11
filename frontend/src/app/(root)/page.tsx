@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
-import axiosInstance from "@/lib/axios";
 
 export default function DashboardPage() {
   const { user, logout, isAuthenticated } = useAuthStore();
@@ -18,12 +17,11 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     try {
-      await axiosInstance.post("/users/logout");
+      // Don't call axios directly here - let the store handle it
+      await logout();
+      router.push("/login");
     } catch (error) {
       console.error("Logout error:", error);
-    } finally {
-      logout();
-      router.push("/login");
     }
   };
 

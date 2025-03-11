@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import ReactQueryProvider from "@/providers/ReactQueryProvider";
 
-const inter = Inter({ subsets: ["latin"] });
-
 export const metadata: Metadata = {
-  title: "Mortuary Management System",
-  description: "A comprehensive mortuary management solution",
+  title: "DeathSet - Your badass mortuary sidekick!",
+  description:
+    "Ditch the mess, own the system, and manage it all like a boss. Mortuary management just got a serious upgrade—no fluff, all function.",
 };
 
 export default function RootLayout({
@@ -19,11 +17,11 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link
-          href="https://api.fontshare.com/v2/css?f[]=satoshi@1,2&display=swap"
+          href="https://api.fontshare.com/v2/css?f[]=clash-grotesk@1&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className={inter.className}>
+      <body>
         <ReactQueryProvider>{children}</ReactQueryProvider>
       </body>
     </html>

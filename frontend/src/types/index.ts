@@ -12,17 +12,35 @@ export interface User {
   status?: string;
 }
 
+export interface ApiError {
+  response?: {
+    data?: {
+      error?: string;
+    };
+  };
+  message: string;
+}
+
+export interface RegisterUserData {
+  name: string;
+  email: string;
+  password: string;
+  role: string;
+  phoneNumber: string;
+}
+
 export interface AuthState {
   user: User | null;
-  token: any;
+  token: string | boolean | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  error: string | null;
+  errorMessage: string | null;
+
   login: (
     email: string,
     password: string,
     skipPasswordCheck?: boolean
   ) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  register: (userData: RegisterUserData) => Promise<void>;
+  logout: () => Promise<void>;
 }
