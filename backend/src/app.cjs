@@ -4,11 +4,12 @@ const dotenv = require("dotenv");
 const cookieParser = require("cookie-parser");
 const userRoutes = require("./routes/userRoutes.cjs");
 const mortuaryRoutes = require("./routes/mortuaryRoutes.cjs");
+const logger = require("./middleware/logger.cjs");
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.BACKEND_PORT || 5000;
+const PORT = process.env.BACKEND_PORT;
 
 app.use(
   cors({
@@ -21,6 +22,7 @@ app.use(
 
 app.use(cookieParser());
 app.use(express.json());
+app.use(logger);
 
 app.use("/api/users", userRoutes);
 app.use("/api/mortuary", mortuaryRoutes);
