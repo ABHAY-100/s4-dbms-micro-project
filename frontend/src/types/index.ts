@@ -44,3 +44,58 @@ export interface AuthState {
   register: (userData: RegisterUserData) => Promise<void>;
   logout: () => Promise<void>;
 }
+
+export interface Chamber {
+  id: string;
+  name: string;
+  capacity: number;
+  currentOccupancy: number;
+  status: "AVAILABLE" | "OCCUPIED" | "MAINTENANCE" | "OUT_OF_ORDER";
+  deceased: DeceasedRecord[];
+}
+
+export interface DeceasedRecord {
+  id: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  dateOfDeath: string;
+  timeOfDeath: string;
+  causeOfDeath: string;
+  gender: "MALE" | "FEMALE" | "OTHER";
+  status: "IN_FACILITY" | "RELEASED" | "PROCESSED";
+  chamberUnitName: string;
+  chamberId?: string;
+  chamber?: Chamber;
+  nextOfKin?: NextOfKin[];
+  personalBelongings?: string;
+  identificationMarks?: string;
+}
+
+export interface NextOfKin {
+  id: string;
+  firstName: string;
+  lastName: string;
+  relationship: string;
+  phoneNumber: string;
+  email: string;
+  address: string;
+  deceasedId: string;
+}
+
+export interface Service {
+  id: string;
+  name: string;
+  description: string;
+  type: "CARE" | "RITUAL" | "LOGISTICS" | "OTHER";
+  cost: number;
+  status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+  completedAt: string | null;
+  deceasedId: string;
+  deceased: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    status: string;
+  };
+}

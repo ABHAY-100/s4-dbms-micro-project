@@ -17,6 +17,7 @@ const register = async (req, res) => {
 
     const phoneRegex = /^\+91[7-9][0-9]{9}$/;
     if (!phoneRegex.test(phone)) {
+      console.log(phone);
       return res.status(400).json({ error: "Invalid phone number format." });
     }
 

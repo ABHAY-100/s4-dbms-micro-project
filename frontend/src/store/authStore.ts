@@ -13,6 +13,14 @@ export const useAuthStore = create<AuthState>()(
       isLoading: false,
       errorMessage: null,
 
+      // Add new updateUser action
+      updateUser: (userData) => {
+        set((state) => ({
+          ...state,
+          user: { ...state.user, ...userData },
+        }));
+      },
+
       login: async (
         email: string,
         password: string,
