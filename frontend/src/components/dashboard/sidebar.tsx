@@ -6,20 +6,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/store/authStore";
-import {
-  BarChart3,
-  Bed,
-  ClipboardList,
-  Home,
-  Users,
-  Heart,
-} from "lucide-react";
+import { BarChart3, Bed, ClipboardList, Home, Heart } from "lucide-react";
 
 export function Sidebar({ className }: React.HTMLAttributes<HTMLDivElement>) {
   const pathname = usePathname();
-  const { user } = useAuthStore();
-  const isAdmin = user?.role === "ADMIN";
 
   return (
     <div className={cn("pb-12", className)}>
@@ -70,30 +60,6 @@ export function Sidebar({ className }: React.HTMLAttributes<HTMLDivElement>) {
                 Services
               </Link>
             </Button>
-            <Button
-              variant={pathname === "/statistics" ? "secondary" : "ghost"}
-              size="sm"
-              className="w-full justify-start"
-              asChild
-            >
-              <Link href="/statistics">
-                <BarChart3 className="mr-2 h-4 w-4" />
-                Statistics
-              </Link>
-            </Button>
-            {isAdmin && (
-              <Button
-                variant={pathname === "/staff" ? "secondary" : "ghost"}
-                size="sm"
-                className="w-full justify-start"
-                asChild
-              >
-                <Link href="/staff">
-                  <Users className="mr-2 h-4 w-4" />
-                  Staff
-                </Link>
-              </Button>
-            )}
           </div>
         </div>
       </div>

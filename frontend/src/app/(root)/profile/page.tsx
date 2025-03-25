@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { Button } from "@/components/ui/button";
@@ -8,25 +8,23 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
+import { toast, Toaster } from "sonner"; // Import Toaster component
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { UserCircle, Mail, Shield } from "lucide-react";
+import { UserCircle } from "lucide-react";
 import axios from "@/lib/axios";
 
 const profileFormSchema = z.object({
@@ -40,28 +38,19 @@ const profileFormSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
-const passwordFormSchema = z
-  .object({
-    currentPassword: z.string().min(8, {
-      message: "Password must be at least 8 characters.",
-    }),
-    newPassword: z.string().min(8, {
-      message: "Password must be at least 8 characters.",
-    }),
-    confirmPassword: z.string().min(8, {
-      message: "Password must be at least 8 characters.",
-    }),
-  })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
+const passwordFormSchema = z.object({
+  currentPassword: z.string().min(8, {
+    message: "Password must be at least 8 characters.",
+  }),
+  newPassword: z.string().min(8, {
+    message: "Password must be at least 8 characters.",
+  }),
+});
 
 type PasswordFormValues = z.infer<typeof passwordFormSchema>;
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuthStore();
-  const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
@@ -73,80 +62,151 @@ export default function ProfilePage() {
     },
   });
 
+  // This effect ensures the form is updated when user data changes
+  useEffect(() => {
+    if (user) {
+      profileForm.reset({
+        name: user.name || "",
+        phone: user.phone || "",
+      });
+    }
+  }, [user, profileForm]);
+
   const passwordForm = useForm<PasswordFormValues>({
     resolver: zodResolver(passwordFormSchema),
     defaultValues: {
       currentPassword: "",
       newPassword: "",
-      confirmPassword: "",
     },
   });
 
-  async function onProfileSubmit(data: ProfileFormValues) {
+  async function updateName(name: string) {
+    if (name === user?.name) {
+      toast.info("No changes", {
+        description: "No changes were made to your name.",
+      });
+      return;
+    }
+
     try {
       setIsUpdating(true);
-      
-      const updates: Partial<ProfileFormValues> = {};
-      if (data.name !== user?.name) {
-        updates.name = data.name;
-      }
-      if (data.phone !== user?.phone) {
-        updates.phone = data.phone;
-      }
+      const response = await axios.patch("/users/update", { name });
 
-      if (Object.keys(updates).length > 0) {
-        const response = await axios.patch("/users/update", updates);
+      if (response.data?.user) {
+        // Update the user in the auth store
+        updateUser(response.data.user);
         
-        if (response.data?.user) {
-          updateUser(response.data.user);
-        }
-
-        toast({
-          title: "Profile updated",
-          description: "Your profile has been updated successfully.",
-        });
-      } else {
-        toast({
-          title: "No changes",
-          description: "No changes were made to your profile.",
+        // Reset the form with the new data to ensure button states update
+        profileForm.reset({
+          name: response.data.user.name || "",
+          phone: response.data.user.phone || "",
         });
       }
+
+      toast.success("Name updated", {
+        description: "Your name has been updated successfully.",
+      });
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error?.response?.data?.message || "Something went wrong",
-        variant: "destructive",
+      const errorMessage = error?.response?.data?.message?.error || 
+                          error?.response?.data?.message || 
+                          "Something went wrong";
+      toast.error("Error", {
+        description: errorMessage,
       });
     } finally {
       setIsUpdating(false);
     }
   }
 
+  async function updatePhone(phone: string) {
+    if (phone === user?.phone) {
+      toast.info("No changes", {
+        description: "No changes were made to your phone number.",
+      });
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      const response = await axios.patch("/users/update", { phone });
+
+      if (response.data?.user) {
+        // Update the user in the auth store
+        updateUser(response.data.user);
+        
+        // Reset the form with the new data to ensure button states update
+        profileForm.reset({
+          name: response.data.user.name || "",
+          phone: response.data.user.phone || "",
+        });
+      }
+
+      toast.success("Phone updated", {
+        description: "Your phone number has been updated successfully.",
+      });
+    } catch (error: any) {
+      // Specific handling for phone number already exists error
+      if (error?.response?.data?.message?.error === "Phone number already exists") {
+        toast.error("Phone Number Error", {
+          description: "This phone number is already in use by another account.",
+        });
+      } else {
+        const errorMessage = error?.response?.data?.message?.error ||
+                            error?.response?.data?.message ||
+                            "Something went wrong";
+        toast.error("Error", {
+          description: errorMessage,
+        });
+      }
+    } finally {
+      setIsUpdating(false);
+    }
+  }
+
   async function onPasswordSubmit(data: PasswordFormValues) {
+    // Don't submit if currentPassword and newPassword are the same
+    if (data.currentPassword === data.newPassword) {
+      toast.info("No changes", {
+        description: "New password must be different from current password.",
+      });
+      return;
+    }
+    
     try {
       setIsChangingPassword(true);
       await axios.patch("/users/update", {
+        // currentPassword: data.currentPassword,
         password: data.newPassword,
       });
-      
+
       passwordForm.reset();
-      toast({
-        title: "Password changed",
+      toast.success("Password changed", {
         description: "Your password has been changed successfully.",
       });
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error?.response?.data?.message || "Something went wrong",
-        variant: "destructive",
+      const errorMessage = error?.response?.data?.message?.error ||
+                          error?.response?.data?.message ||
+                          "Something went wrong";
+      toast.error("Error", {
+        description: errorMessage,
       });
     } finally {
       setIsChangingPassword(false);
     }
   }
 
+  // Check if form values have changed to disable/enable buttons
+  const nameChanged = profileForm.watch('name') !== user?.name;
+  const phoneChanged = profileForm.watch('phone') !== user?.phone;
+  const passwordsEntered = passwordForm.watch('currentPassword') && 
+                           passwordForm.watch('newPassword');
+  const passwordsValid = passwordForm.watch('currentPassword') !== passwordForm.watch('newPassword') &&
+                        passwordForm.watch('currentPassword')?.length >= 8 &&
+                        passwordForm.watch('newPassword')?.length >= 8;
+
   return (
     <DashboardLayout>
+      <Toaster position="top-right" />
       <div className="flex flex-col gap-6">
         <h1 className="text-3xl font-medium pl-2">Profile</h1>
 
@@ -159,29 +219,36 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col md:flex-row gap-6 items-start">
+              <div className="flex flex-col md:flex-row gap-8 items-start">
                 <div className="flex flex-col items-center gap-2 mb-4 md:mb-0">
-                  <div className="bg-muted rounded-full p-6">
-                    <UserCircle className="h-16 w-16 text-muted-foreground" />
+                  <div className="bg-muted rounded-full p-6 w-32 h-32 flex items-center justify-center">
+                    <UserCircle className="h-20 w-20 text-muted-foreground" />
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {user?.role || "User"}
+                  <p className="text-sm font-medium text-muted-foreground uppercase">
+                    {user?.role || "Staff"}
                   </p>
                 </div>
                 <Form {...profileForm}>
-                  <form
-                    onSubmit={profileForm.handleSubmit(onProfileSubmit)}
-                    className="space-y-4 flex-1"
-                  >
+                  <div className="space-y-6 flex-1 w-full">
                     <FormField
                       control={profileForm.control}
                       name="name"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="flex flex-col gap-1.5 w-full">
                           <FormLabel>Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Your name" {...field} />
-                          </FormControl>
+                          <div className="flex gap-3 w-full">
+                            <FormControl className="flex-1">
+                              <Input placeholder="Your name" {...field} />
+                            </FormControl>
+                            <Button
+                              type="button"
+                              onClick={() => updateName(field.value)}
+                              disabled={isUpdating || !nameChanged}
+                              className="whitespace-nowrap"
+                            >
+                              {isUpdating ? "Updating..." : "Update Name"}
+                            </Button>
+                          </div>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -190,25 +257,26 @@ export default function ProfilePage() {
                       control={profileForm.control}
                       name="phone"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="flex flex-col gap-1.5 w-full">
                           <FormLabel>Phone</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="+919999999999" 
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            Phone number must be in format: +919999999999
-                          </FormDescription>
+                          <div className="flex gap-3 w-full">
+                            <FormControl className="flex-1">
+                              <Input placeholder="+919999999999" {...field} />
+                            </FormControl>
+                            <Button
+                              type="button"
+                              onClick={() => updatePhone(field.value)}
+                              disabled={isUpdating || !phoneChanged}
+                              className="whitespace-nowrap"
+                            >
+                              {isUpdating ? "Updating..." : "Update Phone"}
+                            </Button>
+                          </div>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    <Button type="submit" disabled={isUpdating}>
-                      {isUpdating ? "Updating..." : "Update Profile"}
-                    </Button>
-                  </form>
+                  </div>
                 </Form>
               </div>
             </CardContent>
@@ -257,73 +325,20 @@ export default function ProfilePage() {
                             {...field}
                           />
                         </FormControl>
-                        <FormDescription>
-                          Password must be at least 8 characters long.
-                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={passwordForm.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Confirm New Password</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="••••••••"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" disabled={isChangingPassword}>
+                  <Button
+                    type="submit"
+                    disabled={isChangingPassword || !passwordsEntered || !passwordsValid}
+                    className="mt-2"
+                  >
                     {isChangingPassword ? "Changing..." : "Change Password"}
                   </Button>
                 </form>
               </Form>
             </CardContent>
-          </Card>
-
-          <Card className="border-2 shadow-none">
-            <CardHeader>
-              <CardTitle>Account Information</CardTitle>
-              <CardDescription>View your account details.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Mail className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">Email</p>
-                    <p className="text-sm text-muted-foreground">
-                      {user?.email}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">Role</p>
-                    <p className="text-sm text-muted-foreground">
-                      {user?.role || "User"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <p className="text-xs text-muted-foreground">
-                Account created:{" "}
-                {user?.createdAt
-                  ? new Date(user.createdAt).toLocaleDateString()
-                  : "Unknown"}
-              </p>
-            </CardFooter>
           </Card>
         </div>
       </div>

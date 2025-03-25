@@ -116,7 +116,7 @@
 
 @layer base {
   * {
-    font-family: 'Clash Grotesk', sans-serif;
+    font-family: "Clash Grotesk", sans-serif;
     @apply border-border outline-ring/50;
   }
   body {

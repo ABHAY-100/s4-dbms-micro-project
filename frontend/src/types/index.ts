@@ -35,7 +35,7 @@ export interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   errorMessage: string | null;
-
+  updateUser: (user: User) => void;
   login: (
     email: string,
     password: string,

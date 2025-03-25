@@ -33,13 +33,37 @@ interface Deceased {
   chamber?: Chamber;
 }
 
+interface ServiceStats {
+  _count: {
+    _all: number;
+  };
+  _sum: {
+    cost: number;
+  };
+  status: string;
+  type: string;
+}
+
+interface Service {
+  id: string;
+  type: string;
+  status: string;
+  description: string;
+  cost: number;
+  deceasedId: string;
+  deceased?: {
+    firstName: string;
+    lastName: string;
+  };
+}
+
 interface DashboardStats {
   totalChambers: number;
   availableChambers: number;
   totalDeceased: number;
   activeServices: number;
   recentDeceased: Deceased[];
-  pendingServices: any[];
+  pendingServices: Service[];
 }
 
 export default function DashboardPage() {
@@ -80,9 +104,40 @@ export default function DashboardPage() {
     retry: 1,
   });
 
+  const {
+    data: servicesStatsData,
+    isLoading: servicesStatsLoading,
+    error: servicesStatsError,
+    refetch: refetchServicesStats,
+  } = useQuery<ServiceStats[]>({
+    queryKey: ["servicesStats"],
+    queryFn: async () => {
+      const response = await axiosInstance.get("/mortuary/services/stats");
+      return response.data;
+    },
+    retry: 1,
+  });
+
+  const {
+    data: pendingServicesData,
+    isLoading: pendingServicesLoading,
+    error: pendingServicesError,
+    refetch: refetchPendingServices,
+  } = useQuery<ServiceStats[]>({
+    queryKey: ["pendingServices"],
+    queryFn: async () => {
+      // Use the correct endpoint
+      const response = await axiosInstance.get("/mortuary/services/stats");
+      return response.data.filter((stat: ServiceStats) => stat.status === "PENDING");
+    },
+    retry: 1,
+  });
+
   const handleRetry = async () => {
     if (chambersError) await refetchChambers();
     if (deceasedError) await refetchDeceased();
+    if (servicesStatsError) await refetchServicesStats();
+    if (pendingServicesError) await refetchPendingServices();
   };
 
   useEffect(() => {
@@ -91,18 +146,34 @@ export default function DashboardPage() {
         (chamber) => chamber.status === "AVAILABLE"
       ).length;
 
+      // Calculate active services count from the stats
+      const activeServices =
+        servicesStatsData?.reduce((sum, stat) => {
+          // Count PENDING services as active
+          if (stat.status === "PENDING") {
+            return sum + stat._count._all;
+          }
+          return sum;
+        }, 0) || 0;
+
+      // Update stats with the pendingServices stats data
       setStats({
         totalChambers: chambersData.length,
         availableChambers,
         totalDeceased: deceasedData.length,
-        activeServices: 0,
-        recentDeceased: deceasedData.slice(0, 5),
-        pendingServices: [],
+        activeServices,
+        recentDeceased: deceasedData.slice(0, 3), // Changed from 5 to 3
+        pendingServices: [], // We'll handle display differently
       });
     }
-  }, [chambersData, deceasedData]);
+  }, [chambersData, deceasedData, servicesStatsData]);
 
-  if (chambersError || deceasedError) {
+  if (
+    chambersError ||
+    deceasedError ||
+    servicesStatsError ||
+    pendingServicesError
+  ) {
     return (
       <DashboardLayout>
         <div className="p-4">
@@ -136,12 +207,44 @@ export default function DashboardPage() {
                   </p>
                 </div>
               )}
+              {servicesStatsError && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                  <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
+                  <p className="text-red-700 text-sm">
+                    Failed to load services stats:{" "}
+                    {servicesStatsError instanceof Error
+                      ? servicesStatsError.message
+                      : "Unknown error"}
+                  </p>
+                </div>
+              )}
+              {pendingServicesError && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                  <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
+                  <p className="text-red-700 text-sm">
+                    Failed to load pending services:{" "}
+                    {pendingServicesError instanceof Error
+                      ? pendingServicesError.message
+                      : "Unknown error"}
+                  </p>
+                </div>
+              )}
               <Button
                 onClick={handleRetry}
-                disabled={chambersLoading || deceasedLoading}
+                disabled={
+                  chambersLoading ||
+                  deceasedLoading ||
+                  servicesStatsLoading ||
+                  pendingServicesLoading
+                }
                 className="w-full"
               >
-                {chambersLoading || deceasedLoading ? "Retrying..." : "Retry"}
+                {chambersLoading ||
+                deceasedLoading ||
+                servicesStatsLoading ||
+                pendingServicesLoading
+                  ? "Retrying..."
+                  : "Retry"}
               </Button>
             </CardContent>
           </Card>
@@ -182,7 +285,6 @@ export default function DashboardPage() {
           <TabsList>
             <TabsTrigger value="recent">Recent Records</TabsTrigger>
             <TabsTrigger value="services">Pending Services</TabsTrigger>
-            <TabsTrigger value="alerts">Alerts</TabsTrigger>
           </TabsList>
           <TabsContent value="recent">
             <Card className="border-2 shadow-none">
@@ -234,29 +336,37 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">
-                  No pending services at the moment.
-                </p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="alerts">
-            <Card className="border-2 shadow-none">
-              <CardHeader>
-                <CardTitle>System Alerts</CardTitle>
-                <CardDescription>
-                  Important notifications that require attention.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
-                  <AlertCircle className="h-5 w-5 text-amber-500" />
-                  <p className="text-sm text-amber-700">
-                    {stats.availableChambers === 0
-                      ? "No available chambers! Consider adding more capacity."
-                      : "No critical alerts at this time."}
+                {pendingServicesLoading ? (
+                  <p>Loading pending services...</p>
+                ) : pendingServicesData && pendingServicesData.length > 0 ? (
+                  <div className="space-y-4">
+                    {pendingServicesData.map((stat, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between border-b pb-2"
+                      >
+                        <div>
+                          <p className="font-medium capitalize">
+                            {stat.type ? stat.type.toLowerCase() : 'Unknown'} Services
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Count: {stat._count._all} • 
+                            {stat._sum?.cost !== undefined && 
+                              <> Total Cost: ${stat._sum.cost.toFixed(2)}</>
+                            }
+                          </p>
+                        </div>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href="/services">View All</Link>
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">
+                    No pending services at the moment.
                   </p>
-                </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

@@ -78,7 +78,7 @@ export default function NewDeceasedPage() {
   const { data: chambers, isLoading: isLoadingChambers } = useQuery({
     queryKey: ["chambers"],
     queryFn: async () => {
-      const response = await axiosInstance.get("/chambers/all");
+      const response = await axiosInstance.get("/mortuary/chambers/all");
       return response.data.filter((chamber) => chamber.status === "AVAILABLE");
     },
   });
@@ -102,7 +102,16 @@ export default function NewDeceasedPage() {
 
   const createMutation = useMutation({
     mutationFn: async (values: DeceasedFormValues) => {
-      const response = await axiosInstance.post("/deceased", values);
+      // Format the data to match the expected API structure
+      const formattedValues = {
+        ...values,
+        dateOfBirth: `${values.dateOfBirth}T00:00:00Z`,
+        dateOfDeath: `${values.dateOfDeath}T00:00:00Z`,
+        // Convert personalBelongings to array
+        personalBelongings: values.personalBelongings ? [values.personalBelongings] : []
+      };
+      
+      const response = await axiosInstance.post("/mortuary/deceased", formattedValues);
       return response.data;
     },
     onSuccess: () => {
@@ -131,7 +140,7 @@ export default function NewDeceasedPage() {
     <DashboardLayout>
       <div className="flex flex-col gap-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">New Deceased Record</h1>
+          <h1 className="text-3xl font-medium pl-2">New Deceased Record</h1>
           <Button variant="outline" onClick={() => router.back()}>
             Cancel
           </Button>
@@ -278,7 +287,7 @@ export default function NewDeceasedPage() {
                             </FormControl>
                             <SelectContent>
                               {isLoadingChambers ? (
-                                <SelectItem value="" disabled>
+                                <SelectItem value="loading" disabled>
                                   Loading chambers...
                                 </SelectItem>
                               ) : chambers?.length > 0 ? (
@@ -293,7 +302,7 @@ export default function NewDeceasedPage() {
                                   </SelectItem>
                                 ))
                               ) : (
-                                <SelectItem value="" disabled>
+                                <SelectItem value="no-chambers" disabled>
                                   No available chambers
                                 </SelectItem>
                               )}

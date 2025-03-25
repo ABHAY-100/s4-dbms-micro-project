@@ -33,12 +33,18 @@ export function Header() {
         <div className="flex items-center gap-4">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2 shadow-none border-2">
+              <Button
+                variant="outline"
+                className="flex items-center gap-2 shadow-none border-2"
+              >
                 <UserCircle className="h-5 w-5" />
                 <span>{user?.name || "User"}</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="border-2 shadow-[0px_4px_10px_5px_rgba(0,0,0,0.05)] backdrop-blur-2xl">
+            <DropdownMenuContent
+              align="end"
+              className="border-2 shadow-[0px_4px_10px_5px_rgba(0,0,0,0.05)] backdrop-blur-2xl"
+            >
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => router.push("/profile")}>
@@ -47,8 +53,10 @@ export function Header() {
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() =>
-                  (window.location.href =
-                    "https://github.com/ABHAY-100/s4-dbms-micro-project")
+                  window.open(
+                    "https://github.com/ABHAY-100/s4-dbms-micro-project",
+                    "_blank"
+                  )
                 }
               >
                 <Github className="mr-2 h-4 w-4" />

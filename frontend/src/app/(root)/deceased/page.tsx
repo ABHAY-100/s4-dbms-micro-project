@@ -71,7 +71,7 @@ export default function DeceasedPage() {
     <DashboardLayout>
       <div className="flex flex-col gap-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Deceased Records</h1>
+          <h1 className="text-3xl font-medium pl-2">Deceased Records</h1>
           <Button asChild>
             <Link href="/deceased/new">
               <Plus className="mr-2 h-4 w-4" />

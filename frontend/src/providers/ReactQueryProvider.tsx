@@ -13,8 +13,8 @@ export default function ReactQueryProvider({ children }: PropsWithChildren) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 5 * 60 * 1000,
-            gcTime: 10 * 60 * 1000,
+            staleTime: 2.5 * 60 * 1000,
+            gcTime: 2.5 * 60 * 1000,
             retry: 2,
             refetchOnWindowFocus: false,
           },

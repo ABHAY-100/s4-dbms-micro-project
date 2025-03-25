@@ -56,7 +56,7 @@ const createDeceasedRecord = async (req, res) => {
             timeOfDeath,
             causeOfDeath,
             gender,
-            chamberId,
+            chamber: { connect: { id: chamberId } },
             chamberUnitName,
             handledBy: { connect: { id: req.user.id } },
             personalBelongings,

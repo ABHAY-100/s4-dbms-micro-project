@@ -3,7 +3,7 @@ import "./globals.css";
 import ReactQueryProvider from "@/providers/ReactQueryProvider";
 
 export const metadata: Metadata = {
-  title: "DeathSet - Your badass mortuary sidekick!",
+  title: "DeathSet",
   description:
     "Ditch the mess, own the system, and manage it all like a boss. Mortuary management just got a serious upgrade—no fluff, all function.",
 };

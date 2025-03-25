@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axiosInstance from "@/lib/axios";
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -38,7 +39,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -68,18 +68,31 @@ const chamberUpdateSchema = z.object({
 type ChamberUpdateValues = z.infer<typeof chamberUpdateSchema>;
 
 export default function ChambersPage() {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedChamber, setSelectedChamber] = useState(null);
 
-  const { data: chambers, isLoading } = useQuery({
+  const {
+    data: chambers,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["chambers"],
     queryFn: async () => {
-      const response = await axiosInstance.get("/chambers/all");
-      return response.data;
+      try {
+        const response = await axiosInstance.get("mortuary/chambers/all");
+        return response.data;
+      } catch (error) {
+        console.error("Error fetching chambers:", error);
+        toast.error(error.response?.data?.message || 
+                    error.message || 
+                    "An unknown error occurred", {
+          description: "Failed to fetch chambers"
+        });
+        throw error;
+      }
     },
   });
 
@@ -101,31 +114,26 @@ export default function ChambersPage() {
 
   const createMutation = useMutation({
     mutationFn: async (values: ChamberFormValues) => {
-      const response = await axiosInstance.post("/chambers", values);
+      const response = await axiosInstance.post("/mortuary/chambers", values);
       return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["chambers"] });
       setIsCreateOpen(false);
       createForm.reset();
-      toast({
-        title: "Chamber created",
-        description: "The chamber has been created successfully.",
+      toast.success("Chamber created successfully", {
+        description: "The chamber has been created successfully."
       });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create chamber",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to create chamber");
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: async (values: ChamberUpdateValues) => {
       const response = await axiosInstance.put(
-        `/chambers?chamber_name=${selectedChamber.name}`,
+        `/mortuary/chambers?chamber_name=${selectedChamber.name}`,
         values
       );
       return response.data;
@@ -134,41 +142,31 @@ export default function ChambersPage() {
       queryClient.invalidateQueries({ queryKey: ["chambers"] });
       setIsEditOpen(false);
       editForm.reset();
-      toast({
-        title: "Chamber updated",
-        description: "The chamber has been updated successfully.",
+      toast.success("Chamber updated successfully", {
+        description: "The chamber has been updated successfully."
       });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update chamber",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to update chamber");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
       const response = await axiosInstance.delete(
-        `/chambers?chamber_name=${selectedChamber.name}`
+        `mortuary/chambers?chamber_name=${selectedChamber.name}`
       );
       return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["chambers"] });
       setIsDeleteOpen(false);
-      toast({
-        title: "Chamber deleted",
-        description: "The chamber has been deleted successfully.",
+      toast.success("Chamber deleted successfully", {
+        description: "The chamber has been deleted successfully."
       });
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete chamber",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to delete chamber");
     },
   });
 
@@ -335,30 +333,6 @@ export default function ChambersPage() {
                     <span className="font-medium">
                       {chamber.currentOccupancy}/{chamber.capacity}
                     </span>
-                  </div>
-                  <div className="mt-4">
-                    <div className="text-sm font-medium mb-1">Occupants</div>
-                    {chamber.deceased.length > 0 ? (
-                      <div className="space-y-1">
-                        {chamber.deceased.map((deceased) => (
-                          <div
-                            key={deceased.id}
-                            className="text-sm flex justify-between items-center p-1 rounded bg-muted"
-                          >
-                            <span>
-                              {deceased.firstName} {deceased.lastName}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              Unit: {deceased.chamberUnitName}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        No occupants
-                      </p>
-                    )}
                   </div>
                 </CardContent>
               </Card>

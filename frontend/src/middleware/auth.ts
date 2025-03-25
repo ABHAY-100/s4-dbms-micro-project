@@ -8,7 +8,7 @@ export function isAuthenticated(request: NextRequest): boolean {
   if (!token) {
     console.error("Token not found");
     return false;
-  };
+  }
 
   try {
     const secret = process.env.JWT_SECRET;

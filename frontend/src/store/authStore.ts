@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import axiosInstance from "@/lib/axios";
 import { AxiosError } from "axios";
-import { RegisterUserData, AuthState } from "@/types";
+import { RegisterUserData, AuthState, User } from "@/types";
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -13,13 +13,7 @@ export const useAuthStore = create<AuthState>()(
       isLoading: false,
       errorMessage: null,
 
-      // Add new updateUser action
-      updateUser: (userData) => {
-        set((state) => ({
-          ...state,
-          user: { ...state.user, ...userData },
-        }));
-      },
+      updateUser: (user: User) => set({ user }),
 
       login: async (
         email: string,
@@ -73,14 +67,21 @@ export const useAuthStore = create<AuthState>()(
             "/users/register",
             userData
           );
-          const { user, token } = response.data;
+          // Make sure we handle the API response consistently
+          const userDetails = response.data.user || response.data.userDetails;
+          const token = response.data.token || true;
 
-          set({
-            user,
-            token,
-            isAuthenticated: true,
-            isLoading: false,
-          });
+          if (userDetails) {
+            set({
+              user: userDetails,
+              token,
+              isAuthenticated: true,
+              isLoading: false,
+            });
+            return;
+          }
+
+          throw new Error("Failed to get user details");
         } catch (error: unknown) {
           const axiosError = error as AxiosError<{ message: string }>;
           set({
