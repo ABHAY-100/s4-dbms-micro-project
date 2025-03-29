@@ -84,7 +84,7 @@ export default function DashboardPage() {
   } = useQuery<Chamber[]>({
     queryKey: ["chambers"],
     queryFn: async () => {
-      const response = await axiosInstance.get("/mortuary/chambers/all"); // Changed from /chambers/all
+      const response = await axiosInstance.get("/mortuary/chambers/all");
       return response.data;
     },
     retry: 1,
@@ -128,7 +128,9 @@ export default function DashboardPage() {
     queryFn: async () => {
       // Use the correct endpoint
       const response = await axiosInstance.get("/mortuary/services/stats");
-      return response.data.filter((stat: ServiceStats) => stat.status === "PENDING");
+      return response.data.filter(
+        (stat: ServiceStats) => stat.status === "PENDING"
+      );
     },
     retry: 1,
   });
@@ -314,7 +316,7 @@ export default function DashboardPage() {
                           </p>
                         </div>
                         <Button variant="outline" size="sm" asChild>
-                          <Link href={`/deceased/${deceased.id}`}>View</Link>
+                          <Link href={`/deceased`}>View</Link>
                         </Button>
                       </div>
                     ))}
@@ -347,13 +349,14 @@ export default function DashboardPage() {
                       >
                         <div>
                           <p className="font-medium capitalize">
-                            {stat.type ? stat.type.toLowerCase() : 'Unknown'} Services
+                            {stat.type ? stat.type.toLowerCase() : "Unknown"}{" "}
+                            Services
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            Count: {stat._count._all} • 
-                            {stat._sum?.cost !== undefined && 
+                            Count: {stat._count._all} •
+                            {stat._sum?.cost !== undefined && (
                               <> Total Cost: ${stat._sum.cost.toFixed(2)}</>
-                            }
+                            )}
                           </p>
                         </div>
                         <Button variant="outline" size="sm" asChild>

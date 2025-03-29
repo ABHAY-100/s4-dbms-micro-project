@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
@@ -26,17 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ApiError } from "@/types";
-
-const registerSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.string().min(1, "Role is required"),
-  phoneNumber: z.string().min(10, "Phone number must be at least 10 digits"),
-});
-
-type RegisterFormData = z.infer<typeof registerSchema>;
+import { ApiError, registerSchema, RegisterFormData } from "@/types";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -61,18 +50,11 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterFormData) => {
     try {
       setServerError(null);
-      await registerUser({
-        name: data.name,
-        email: data.email,
-        password: data.password,
-        role: data.role,
-        phoneNumber: data.phoneNumber,
-      });
+      await registerUser(data);
     } catch (error: unknown) {
-      const apiError = error as ApiError;
       setServerError(
-        apiError.response?.data?.error ||
-          "Failed to login. Please check your credentials."
+        (error as ApiError)?.response?.data?.error ||
+          "Failed to register. Try again."
       );
     }
   };

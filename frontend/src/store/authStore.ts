@@ -8,33 +8,21 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
-      token: null,
+      token: false,
       isAuthenticated: false,
       isLoading: false,
       errorMessage: null,
 
       updateUser: (user: User) => set({ user }),
 
-      login: async (
-        email: string,
-        password: string,
-        skipPasswordCheck = false
-      ) => {
+      login: async (email: string, password: string) => {
         set({ isLoading: true, errorMessage: null });
         try {
-          let userDetails;
-
-          if (skipPasswordCheck) {
-            const response = await axiosInstance.get("/users/profile");
-            userDetails = response.data.user;
-          } else {
-            const response = await axiosInstance.post("/users/login", {
-              email,
-              password,
-            });
-            userDetails = response.data.userDetails;
-          }
-
+          const response = await axiosInstance.post("/users/login", {
+            email,
+            password
+          });
+          const userDetails = response.data.userDetails;
           if (userDetails) {
             set({
               user: userDetails,
@@ -51,11 +39,9 @@ export const useAuthStore = create<AuthState>()(
           set({
             isLoading: false,
             errorMessage:
-              axiosError.response?.data?.message || "Failed to login",
-            user: null,
-            token: null,
-            isAuthenticated: false,
+              axiosError.response?.data?.message || "Failed to login"
           });
+
           throw error;
         }
       },
@@ -67,14 +53,11 @@ export const useAuthStore = create<AuthState>()(
             "/users/register",
             userData
           );
-          // Make sure we handle the API response consistently
-          const userDetails = response.data.user || response.data.userDetails;
-          const token = response.data.token || true;
-
+          const userDetails = response.data.userDetails;
           if (userDetails) {
             set({
               user: userDetails,
-              token,
+              token: true,
               isAuthenticated: true,
               isLoading: false,
             });
@@ -87,8 +70,9 @@ export const useAuthStore = create<AuthState>()(
           set({
             isLoading: false,
             errorMessage:
-              axiosError.response?.data?.message || "Failed to register",
+              axiosError.response?.data?.message || "Failed to register"
           });
+
           throw error;
         }
       },
@@ -103,6 +87,7 @@ export const useAuthStore = create<AuthState>()(
             if (axiosError.response?.status !== 401) {
               throw logoutError;
             }
+
             console.warn(
               "Server logout failed with 401, proceeding with local logout"
             );
@@ -110,7 +95,7 @@ export const useAuthStore = create<AuthState>()(
 
           set({
             user: null,
-            token: null,
+            token: false,
             isAuthenticated: false,
             isLoading: false,
           });
@@ -121,6 +106,7 @@ export const useAuthStore = create<AuthState>()(
             errorMessage:
               axiosError.response?.data?.message || "Failed to logout",
           });
+          
           throw error;
         }
       },

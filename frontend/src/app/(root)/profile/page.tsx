@@ -20,7 +20,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { toast, Toaster } from "sonner"; // Import Toaster component
+import { toast, Toaster } from "sonner";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -62,7 +62,6 @@ export default function ProfilePage() {
     },
   });
 
-  // This effect ensures the form is updated when user data changes
   useEffect(() => {
     if (user) {
       profileForm.reset({
@@ -93,10 +92,8 @@ export default function ProfilePage() {
       const response = await axios.patch("/users/update", { name });
 
       if (response.data?.user) {
-        // Update the user in the auth store
         updateUser(response.data.user);
-        
-        // Reset the form with the new data to ensure button states update
+
         profileForm.reset({
           name: response.data.user.name || "",
           phone: response.data.user.phone || "",
@@ -107,9 +104,10 @@ export default function ProfilePage() {
         description: "Your name has been updated successfully.",
       });
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message?.error || 
-                          error?.response?.data?.message || 
-                          "Something went wrong";
+      const errorMessage =
+        error?.response?.data?.message?.error ||
+        error?.response?.data?.message ||
+        "Something went wrong";
       toast.error("Error", {
         description: errorMessage,
       });
@@ -131,10 +129,8 @@ export default function ProfilePage() {
       const response = await axios.patch("/users/update", { phone });
 
       if (response.data?.user) {
-        // Update the user in the auth store
         updateUser(response.data.user);
-        
-        // Reset the form with the new data to ensure button states update
+
         profileForm.reset({
           name: response.data.user.name || "",
           phone: response.data.user.phone || "",
@@ -145,15 +141,18 @@ export default function ProfilePage() {
         description: "Your phone number has been updated successfully.",
       });
     } catch (error: any) {
-      // Specific handling for phone number already exists error
-      if (error?.response?.data?.message?.error === "Phone number already exists") {
+      if (
+        error?.response?.data?.message?.error === "Phone number already exists"
+      ) {
         toast.error("Phone Number Error", {
-          description: "This phone number is already in use by another account.",
+          description:
+            "This phone number is already in use by another account.",
         });
       } else {
-        const errorMessage = error?.response?.data?.message?.error ||
-                            error?.response?.data?.message ||
-                            "Something went wrong";
+        const errorMessage =
+          error?.response?.data?.message?.error ||
+          error?.response?.data?.message ||
+          "Something went wrong";
         toast.error("Error", {
           description: errorMessage,
         });
@@ -164,18 +163,16 @@ export default function ProfilePage() {
   }
 
   async function onPasswordSubmit(data: PasswordFormValues) {
-    // Don't submit if currentPassword and newPassword are the same
     if (data.currentPassword === data.newPassword) {
       toast.info("No changes", {
         description: "New password must be different from current password.",
       });
       return;
     }
-    
+
     try {
       setIsChangingPassword(true);
       await axios.patch("/users/update", {
-        // currentPassword: data.currentPassword,
         password: data.newPassword,
       });
 
@@ -184,9 +181,10 @@ export default function ProfilePage() {
         description: "Your password has been changed successfully.",
       });
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message?.error ||
-                          error?.response?.data?.message ||
-                          "Something went wrong";
+      const errorMessage =
+        error?.response?.data?.message?.error ||
+        error?.response?.data?.message ||
+        "Something went wrong";
       toast.error("Error", {
         description: errorMessage,
       });
@@ -195,14 +193,15 @@ export default function ProfilePage() {
     }
   }
 
-  // Check if form values have changed to disable/enable buttons
-  const nameChanged = profileForm.watch('name') !== user?.name;
-  const phoneChanged = profileForm.watch('phone') !== user?.phone;
-  const passwordsEntered = passwordForm.watch('currentPassword') && 
-                           passwordForm.watch('newPassword');
-  const passwordsValid = passwordForm.watch('currentPassword') !== passwordForm.watch('newPassword') &&
-                        passwordForm.watch('currentPassword')?.length >= 8 &&
-                        passwordForm.watch('newPassword')?.length >= 8;
+  const nameChanged = profileForm.watch("name") !== user?.name;
+  const phoneChanged = profileForm.watch("phone") !== user?.phone;
+  const passwordsEntered =
+    passwordForm.watch("currentPassword") && passwordForm.watch("newPassword");
+  const passwordsValid =
+    passwordForm.watch("currentPassword") !==
+      passwordForm.watch("newPassword") &&
+    passwordForm.watch("currentPassword")?.length >= 8 &&
+    passwordForm.watch("newPassword")?.length >= 8;
 
   return (
     <DashboardLayout>
@@ -331,7 +330,9 @@ export default function ProfilePage() {
                   />
                   <Button
                     type="submit"
-                    disabled={isChangingPassword || !passwordsEntered || !passwordsValid}
+                    disabled={
+                      isChangingPassword || !passwordsEntered || !passwordsValid
+                    }
                     className="mt-2"
                   >
                     {isChangingPassword ? "Changing..." : "Change Password"}

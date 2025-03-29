@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
+import { loginSchema, LoginFormData, ApiError } from "@/types";
 import {
   Card,
   CardContent,
@@ -19,14 +19,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ApiError } from "@/types";
-
-const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -42,9 +34,7 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    if (isAuthenticated) {
-      router.push("/");
-    }
+    if (isAuthenticated) router.push("/");
   }, [isAuthenticated, router]);
 
   const onSubmit = async (data: LoginFormData) => {
@@ -63,9 +53,9 @@ export default function LoginPage() {
 
   return (
     <Card className="w-full max-w-md border-2 shadow-none">
-      <CardHeader className="space-y-1 text-center flex flex-col items-center gap-[2px] mb-[10px]">
+      <CardHeader className="text-center flex flex-col items-center gap-1 mb-2">
         <CardTitle className="text-2xl font-bold">DeathSet</CardTitle>
-        <CardDescription className="text-md">
+        <CardDescription>
           Sign in and pick up where you left off.
         </CardDescription>
       </CardHeader>
@@ -89,9 +79,7 @@ export default function LoginPage() {
             )}
           </div>
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-            </div>
+            <Label htmlFor="password">Password</Label>
             <Input id="password" type="password" {...register("password")} />
             {errors.password && (
               <p className="text-sm text-destructive">

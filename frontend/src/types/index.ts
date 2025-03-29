@@ -1,8 +1,23 @@
+import { ReactNode } from "react";
+import { z } from "zod";
+
+// jwt payload type
 export interface JwtPayload {
   id: string;
   exp?: number;
 }
 
+// api response type
+export interface ApiError {
+  response?: {
+    data?: {
+      error?: string;
+    };
+  };
+  message?: string;
+}
+
+// start: zustand auth types
 export interface User {
   id: string;
   name: string;
@@ -10,15 +25,6 @@ export interface User {
   role: string;
   phone?: string;
   status?: string;
-}
-
-export interface ApiError {
-  response?: {
-    data?: {
-      error?: string;
-    };
-  };
-  message: string;
 }
 
 export interface RegisterUserData {
@@ -31,7 +37,7 @@ export interface RegisterUserData {
 
 export interface AuthState {
   user: User | null;
-  token: string | boolean | null;
+  token: boolean;
   isAuthenticated: boolean;
   isLoading: boolean;
   errorMessage: string | null;
@@ -44,7 +50,9 @@ export interface AuthState {
   register: (userData: RegisterUserData) => Promise<void>;
   logout: () => Promise<void>;
 }
+// end: zustand auth types
 
+// chamber type
 export interface Chamber {
   id: string;
   name: string;
@@ -54,6 +62,7 @@ export interface Chamber {
   deceased: DeceasedRecord[];
 }
 
+// deceased type
 export interface DeceasedRecord {
   id: string;
   firstName: string;
@@ -72,6 +81,7 @@ export interface DeceasedRecord {
   identificationMarks?: string;
 }
 
+// next of kin type
 export interface NextOfKin {
   id: string;
   firstName: string;
@@ -83,6 +93,7 @@ export interface NextOfKin {
   deceasedId: string;
 }
 
+// service type
 export interface Service {
   id: string;
   name: string;
@@ -99,3 +110,25 @@ export interface Service {
     status: string;
   };
 }
+
+// reactnode type
+export type PropsWithChildren = {
+  children: ReactNode;
+};
+
+// login types
+export const loginSchema = z.object({
+  email: z.string().email("Please enter a valid email"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+export type LoginFormData = z.infer<typeof loginSchema>;
+
+// register types
+export const registerSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Please enter a valid email"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  role: z.string().min(1, "Role is required"),
+  phoneNumber: z.string().min(10, "Phone number must be at least 10 digits"),
+});
+export type RegisterFormData = z.infer<typeof registerSchema>;
