@@ -132,3 +132,28 @@ export const registerSchema = z.object({
   phoneNumber: z.string().min(10, "Phone number must be at least 10 digits"),
 });
 export type RegisterFormData = z.infer<typeof registerSchema>;
+
+// start: dashboard types
+export interface ServiceStats {
+  _count: {
+    _all: number;
+  };
+  _sum: {
+    cost: number;
+  };
+  status: string;
+  type: string;
+}
+
+export interface DashboardStats {
+  totalChambers: number;
+  availableChambers: number;
+  totalDeceased: number;
+  activeServices: number;
+  recentDeceased: DeceasedRecord[];
+  pendingServices: ServiceStats[];
+}
+
+export type QueryError = Error;
+
+// end: dashboard types

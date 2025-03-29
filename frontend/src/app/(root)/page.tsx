@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import axiosInstance from "@/lib/axios";
 import { DashboardLayout } from "@/components/dashboard/layout";
@@ -16,166 +16,132 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Bed, ClipboardList, Heart, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { 
+  Chamber, 
+  DeceasedRecord, 
+  ServiceStats, 
+  DashboardStats, 
+  QueryError 
+} from "@/types";
 
-interface Chamber {
-  id: string;
-  name: string;
-  status: "AVAILABLE" | "OCCUPIED" | "MAINTENANCE";
-  capacity: number;
-  currentOccupancy: number;
-}
+// Constants
+const API_ENDPOINTS = {
+  CHAMBERS: "/mortuary/chambers/all",
+  DECEASED: "/mortuary/deceased/all",
+  SERVICES_STATS: "/mortuary/services/stats"
+};
 
-interface Deceased {
-  id: string;
-  firstName: string;
-  lastName: string;
-  status: string;
-  chamber?: Chamber;
-}
-
-interface ServiceStats {
-  _count: {
-    _all: number;
-  };
-  _sum: {
-    cost: number;
-  };
-  status: string;
-  type: string;
-}
-
-interface Service {
-  id: string;
-  type: string;
-  status: string;
-  description: string;
-  cost: number;
-  deceasedId: string;
-  deceased?: {
-    firstName: string;
-    lastName: string;
-  };
-}
-
-interface DashboardStats {
-  totalChambers: number;
-  availableChambers: number;
-  totalDeceased: number;
-  activeServices: number;
-  recentDeceased: Deceased[];
-  pendingServices: Service[];
-}
+// Initial dashboard state
+const INITIAL_DASHBOARD_STATS: DashboardStats = {
+  totalChambers: 0,
+  availableChambers: 0,
+  totalDeceased: 0,
+  activeServices: 0,
+  recentDeceased: [],
+  pendingServices: []
+};
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalChambers: 0,
-    availableChambers: 0,
-    totalDeceased: 0,
-    activeServices: 0,
-    recentDeceased: [],
-    pendingServices: [],
-  });
+  const [stats, setStats] = useState<DashboardStats>(INITIAL_DASHBOARD_STATS);
 
+  // Chamber data query
   const {
     data: chambersData,
     isLoading: chambersLoading,
     error: chambersError,
     refetch: refetchChambers,
-  } = useQuery<Chamber[]>({
+  } = useQuery<Chamber[], QueryError>({
     queryKey: ["chambers"],
     queryFn: async () => {
-      const response = await axiosInstance.get("/mortuary/chambers/all");
+      const response = await axiosInstance.get(API_ENDPOINTS.CHAMBERS);
       return response.data;
     },
     retry: 1,
   });
 
+  // Deceased data query
   const {
     data: deceasedData,
     isLoading: deceasedLoading,
     error: deceasedError,
     refetch: refetchDeceased,
-  } = useQuery<Deceased[]>({
+  } = useQuery<DeceasedRecord[], QueryError>({
     queryKey: ["deceased"],
     queryFn: async () => {
-      const response = await axiosInstance.get("/mortuary/deceased/all"); // Changed from /deceased/all
+      const response = await axiosInstance.get(API_ENDPOINTS.DECEASED);
       return response.data;
     },
     retry: 1,
   });
 
+  // Services stats query
   const {
     data: servicesStatsData,
     isLoading: servicesStatsLoading,
     error: servicesStatsError,
     refetch: refetchServicesStats,
-  } = useQuery<ServiceStats[]>({
+  } = useQuery<ServiceStats[], QueryError>({
     queryKey: ["servicesStats"],
     queryFn: async () => {
-      const response = await axiosInstance.get("/mortuary/services/stats");
+      const response = await axiosInstance.get(API_ENDPOINTS.SERVICES_STATS);
       return response.data;
     },
     retry: 1,
   });
 
-  const {
-    data: pendingServicesData,
-    isLoading: pendingServicesLoading,
-    error: pendingServicesError,
-    refetch: refetchPendingServices,
-  } = useQuery<ServiceStats[]>({
-    queryKey: ["pendingServices"],
-    queryFn: async () => {
-      // Use the correct endpoint
-      const response = await axiosInstance.get("/mortuary/services/stats");
-      return response.data.filter(
-        (stat: ServiceStats) => stat.status === "PENDING"
-      );
-    },
-    retry: 1,
-  });
+  // Memoize pending services data to avoid recreating on each render
+  const pendingServicesData = useMemo(() => 
+    servicesStatsData?.filter(stat => stat.status === "PENDING") || [],
+    [servicesStatsData]
+  );
+  
+  const pendingServicesLoading = servicesStatsLoading;
 
+  // Retry all queries on error
   const handleRetry = async () => {
-    if (chambersError) await refetchChambers();
-    if (deceasedError) await refetchDeceased();
-    if (servicesStatsError) await refetchServicesStats();
-    if (pendingServicesError) await refetchPendingServices();
+    const promises = [];
+    if (chambersError) promises.push(refetchChambers());
+    if (deceasedError) promises.push(refetchDeceased());
+    if (servicesStatsError) promises.push(refetchServicesStats());
+    
+    await Promise.all(promises);
   };
 
+  // Update dashboard stats when data changes
   useEffect(() => {
-    if (chambersData && deceasedData) {
-      const availableChambers = chambersData.filter(
-        (chamber) => chamber.status === "AVAILABLE"
-      ).length;
+    if (!chambersData || !deceasedData || !servicesStatsData) return;
 
-      // Calculate active services count from the stats
-      const activeServices =
-        servicesStatsData?.reduce((sum, stat) => {
-          // Count PENDING services as active
-          if (stat.status === "PENDING") {
-            return sum + stat._count._all;
-          }
-          return sum;
-        }, 0) || 0;
+    const availableChambers = chambersData.filter(
+      (chamber) => chamber.status === "AVAILABLE"
+    ).length;
 
-      // Update stats with the pendingServices stats data
-      setStats({
-        totalChambers: chambersData.length,
-        availableChambers,
-        totalDeceased: deceasedData.length,
-        activeServices,
-        recentDeceased: deceasedData.slice(0, 3), // Changed from 5 to 3
-        pendingServices: [], // We'll handle display differently
-      });
-    }
-  }, [chambersData, deceasedData, servicesStatsData]);
+    // Calculate active services count from the stats
+    const activeServices = servicesStatsData.reduce((sum, stat) => {
+      return stat.status === "PENDING" ? sum + stat._count._all : sum;
+    }, 0);
 
-  if (
-    chambersError ||
-    deceasedError ||
-    servicesStatsError ||
-    pendingServicesError
-  ) {
+    setStats({
+      totalChambers: chambersData?.length || 0,
+      availableChambers,
+      totalDeceased: deceasedData?.length || 0,
+      activeServices,
+      recentDeceased: deceasedData.slice(0, 3),
+      pendingServices: pendingServicesData,
+    });
+  }, [chambersData, deceasedData, servicesStatsData, pendingServicesData]);
+
+  // Determine if there are any errors
+  const hasErrors = chambersError || deceasedError || servicesStatsError;
+  
+  // Determine if any data is loading
+  const isLoading = chambersLoading || deceasedLoading || servicesStatsLoading;
+
+  // Helper to extract error message
+  const getErrorMessage = (error: QueryError): string => {
+    return error instanceof Error ? error.message : "Unknown error";
+  };
+
+  if (hasErrors) {
     return (
       <DashboardLayout>
         <div className="p-4">
@@ -191,10 +157,7 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
                   <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
                   <p className="text-red-700 text-sm">
-                    Failed to load chambers data:{" "}
-                    {chambersError instanceof Error
-                      ? chambersError.message
-                      : "Unknown error"}
+                    Failed to load chambers data: {getErrorMessage(chambersError)}
                   </p>
                 </div>
               )}
@@ -202,10 +165,7 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
                   <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
                   <p className="text-red-700 text-sm">
-                    Failed to load deceased records:{" "}
-                    {deceasedError instanceof Error
-                      ? deceasedError.message
-                      : "Unknown error"}
+                    Failed to load deceased records: {getErrorMessage(deceasedError)}
                   </p>
                 </div>
               )}
@@ -213,40 +173,16 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
                   <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
                   <p className="text-red-700 text-sm">
-                    Failed to load services stats:{" "}
-                    {servicesStatsError instanceof Error
-                      ? servicesStatsError.message
-                      : "Unknown error"}
-                  </p>
-                </div>
-              )}
-              {pendingServicesError && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
-                  <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
-                  <p className="text-red-700 text-sm">
-                    Failed to load pending services:{" "}
-                    {pendingServicesError instanceof Error
-                      ? pendingServicesError.message
-                      : "Unknown error"}
+                    Failed to load services stats: {getErrorMessage(servicesStatsError)}
                   </p>
                 </div>
               )}
               <Button
                 onClick={handleRetry}
-                disabled={
-                  chambersLoading ||
-                  deceasedLoading ||
-                  servicesStatsLoading ||
-                  pendingServicesLoading
-                }
+                disabled={isLoading}
                 className="w-full"
               >
-                {chambersLoading ||
-                deceasedLoading ||
-                servicesStatsLoading ||
-                pendingServicesLoading
-                  ? "Retrying..."
-                  : "Retry"}
+                {isLoading ? "Retrying..." : "Retry"}
               </Button>
             </CardContent>
           </Card>
@@ -316,7 +252,7 @@ export default function DashboardPage() {
                           </p>
                         </div>
                         <Button variant="outline" size="sm" asChild>
-                          <Link href={`/deceased`}>View</Link>
+                          <Link href={`/deceased/${deceased.id}`}>View</Link>
                         </Button>
                       </div>
                     ))}
@@ -340,7 +276,7 @@ export default function DashboardPage() {
               <CardContent>
                 {pendingServicesLoading ? (
                   <p>Loading pending services...</p>
-                ) : pendingServicesData && pendingServicesData.length > 0 ? (
+                ) : pendingServicesData.length > 0 ? (
                   <div className="space-y-4">
                     {pendingServicesData.map((stat, index) => (
                       <div
@@ -353,9 +289,9 @@ export default function DashboardPage() {
                             Services
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            Count: {stat._count._all} •
+                            Count: {stat._count._all}
                             {stat._sum?.cost !== undefined && (
-                              <> Total Cost: ${stat._sum.cost.toFixed(2)}</>
+                              <> • Total Cost: ${stat._sum.cost.toFixed(2)}</>
                             )}
                           </p>
                         </div>
@@ -403,7 +339,7 @@ export default function DashboardPage() {
             <CardContent>
               {chambersLoading ? (
                 <p>Loading chamber status...</p>
-              ) : chambersData?.length > 0 ? (
+              ) : chambersData.length > 0 ? (
                 <div className="space-y-2">
                   {chambersData.map((chamber) => (
                     <div
