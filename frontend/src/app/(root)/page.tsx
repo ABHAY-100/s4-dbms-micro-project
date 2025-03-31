@@ -42,6 +42,17 @@ interface DashboardStats {
   pendingServices: any[];
 }
 
+interface ServiceStat {
+  status: string;
+  type: string;
+  _count: {
+    _all: number;
+  };
+  _sum: {
+    cost: number | null;
+  };
+}
+
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({
     totalChambers: 0,
@@ -80,29 +91,49 @@ export default function DashboardPage() {
     retry: 1,
   });
 
+  const {
+    data: serviceStatsData,
+    isLoading: serviceStatsLoading,
+    error: serviceStatsError,
+    refetch: refetchServiceStats,
+  } = useQuery<ServiceStat[]>({
+    queryKey: ["serviceStats"],
+    queryFn: async () => {
+      const response = await axiosInstance.get("/mortuary/services/stats");
+      return response.data;
+    },
+    retry: 1,
+  });
+
   const handleRetry = async () => {
     if (chambersError) await refetchChambers();
     if (deceasedError) await refetchDeceased();
+    if (serviceStatsError) await refetchServiceStats();
   };
 
   useEffect(() => {
-    if (chambersData && deceasedData) {
+    if (chambersData && deceasedData && serviceStatsData) {
       const availableChambers = chambersData.filter(
         (chamber) => chamber.status === "AVAILABLE"
       ).length;
+
+      // Calculate active services (PENDING or IN_PROGRESS)
+      const activeServices = serviceStatsData
+        .filter(stat => ["PENDING", "IN_PROGRESS"].includes(stat.status))
+        .reduce((sum, stat) => sum + stat._count._all, 0);
 
       setStats({
         totalChambers: chambersData.length,
         availableChambers,
         totalDeceased: deceasedData.length,
-        activeServices: 0,
+        activeServices,
         recentDeceased: deceasedData.slice(0, 5),
         pendingServices: [],
       });
     }
-  }, [chambersData, deceasedData]);
+  }, [chambersData, deceasedData, serviceStatsData]);
 
-  if (chambersError || deceasedError) {
+  if (chambersError || deceasedError || serviceStatsError) {
     return (
       <DashboardLayout>
         <div className="p-4">
@@ -136,12 +167,23 @@ export default function DashboardPage() {
                   </p>
                 </div>
               )}
+              {serviceStatsError && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                  <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
+                  <p className="text-red-700 text-sm">
+                    Failed to load service statistics:{" "}
+                    {serviceStatsError instanceof Error
+                      ? serviceStatsError.message
+                      : "Unknown error"}
+                  </p>
+                </div>
+              )}
               <Button
                 onClick={handleRetry}
-                disabled={chambersLoading || deceasedLoading}
+                disabled={chambersLoading || deceasedLoading || serviceStatsLoading}
                 className="w-full"
               >
-                {chambersLoading || deceasedLoading ? "Retrying..." : "Retry"}
+                {chambersLoading || deceasedLoading || serviceStatsLoading ? "Retrying..." : "Retry"}
               </Button>
             </CardContent>
           </Card>

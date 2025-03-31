@@ -373,7 +373,7 @@ export default function ServicesPage() {
     <DashboardLayout>
       <div className="flex flex-col gap-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-medium pl-2">Services Management</h1>
+          <h1 className="text-3xl font-medium pl-2">Services</h1>
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button>
