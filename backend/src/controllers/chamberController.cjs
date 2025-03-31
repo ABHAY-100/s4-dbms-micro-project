@@ -1,25 +1,31 @@
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 
 const createChamber = async (req, res) => {
   try {
     const { name, capacity } = req.body;
-    
+
     if (!/^[A-Z]$/.test(name)) {
-      return res.status(400).json({ error: "Chamber name must be a single uppercase letter (A-Z)" });
+      return res.status(400).json({
+        error: "Chamber name must be a single uppercase letter (A-Z)",
+      });
     }
 
     if (!Number.isInteger(capacity) || capacity <= 0) {
-      return res.status(400).json({ error: "Capacity must be a positive integer" });
+      return res
+        .status(400)
+        .json({ error: "Capacity must be a positive integer" });
     }
 
     const existingChamber = await prisma.chamber.findUnique({
-      where: { name }
+      where: { name },
     });
 
     if (existingChamber) {
-      return res.status(400).json({ error: `Chamber with name ${name} already exists` });
+      return res
+        .status(400)
+        .json({ error: `Chamber with name ${name} already exists` });
     }
 
     const chamber = await prisma.chamber.create({
@@ -33,12 +39,14 @@ const createChamber = async (req, res) => {
         name: true,
         capacity: true,
         currentOccupancy: true,
-        status: true
-      }
+        status: true,
+      },
     });
-    res.status(201).send({ message: `Chamber ${name} created successfully` , chamber });
+    res
+      .status(201)
+      .send({ message: `Chamber ${name} created successfully`, chamber });
   } catch (error) {
-    if (error.code === 'P2002' && error.meta?.target?.includes('name')) {
+    if (error.code === "P2002" && error.meta?.target?.includes("name")) {
       res.status(400).json({ error: `Chamber with this name already exists` });
     } else {
       res.status(400).json({ error: error.message });
@@ -61,10 +69,10 @@ const getAllChambers = async (req, res) => {
             firstName: true,
             lastName: true,
             chamberUnitName: true,
-            status: true
-          }
-        }
-      }
+            status: true,
+          },
+        },
+      },
     });
     res.json(chambers);
   } catch (error) {
@@ -88,14 +96,14 @@ const getChamber = async (req, res) => {
             firstName: true,
             lastName: true,
             chamberUnitName: true,
-            status: true
-          }
+            status: true,
+          },
         },
-      }
+      },
     });
 
     if (!chamber) {
-      return res.status(404).json({ error: 'Chamber not found' });
+      return res.status(404).json({ error: "Chamber not found" });
     }
 
     res.json(chamber);
@@ -111,7 +119,7 @@ const updateChamber = async (req, res) => {
 
     const chamber = await prisma.chamber.findUnique({
       where: { name },
-      include: { deceased: true }
+      include: { deceased: true },
     });
 
     if (!chamber) {
@@ -119,42 +127,43 @@ const updateChamber = async (req, res) => {
     }
 
     if (capacity && capacity < chamber.currentOccupancy) {
-      return res.status(400).json({ 
-        error: `Cannot reduce capacity below current occupancy (${chamber.currentOccupancy} units in use)`
+      return res.status(400).json({
+        error: `Cannot reduce capacity below current occupancy (${chamber.currentOccupancy} units in use)`,
       });
     }
 
-    if (status && (status === 'MAINTENANCE' || status === 'OUT_OF_ORDER') && chamber.deceased.length > 0) {
-      return res.status(400).json({ 
-        error: `Cannot set chamber to ${status.toLowerCase()} while it has deceased records assigned`
+    if (
+      status &&
+      (status === "MAINTENANCE" || status === "OUT_OF_ORDER") &&
+      chamber.deceased.length > 0
+    ) {
+      return res.status(400).json({
+        error: `Cannot set chamber to ${status.toLowerCase()} while it has deceased records assigned`,
       });
     }
 
     let newStatus = status;
-    // If capacity is being updated, check if we need to update status
     if (capacity && !status) {
-      if (capacity > chamber.capacity && chamber.status === 'OCCUPIED') {
-        // If increasing capacity and chamber was full, set to AVAILABLE
-        newStatus = 'AVAILABLE';
+      if (capacity > chamber.capacity && chamber.status === "OCCUPIED") {
+        newStatus = "AVAILABLE";
       } else if (chamber.currentOccupancy >= capacity) {
-        // If new capacity is less than or equal to current occupancy, set to OCCUPIED
-        newStatus = 'OCCUPIED';
+        newStatus = "OCCUPIED";
       }
     }
 
     const updatedChamber = await prisma.chamber.update({
       where: { name },
-      data: { 
+      data: {
         status: newStatus,
-        capacity: capacity || undefined
+        capacity: capacity || undefined,
       },
       select: {
         id: true,
         name: true,
         status: true,
         capacity: true,
-        currentOccupancy: true
-      }
+        currentOccupancy: true,
+      },
     });
 
     res.json(updatedChamber);
@@ -168,7 +177,7 @@ const deleteChamber = async (req, res) => {
     const name = req.query.chamber_name;
     const chamber = await prisma.chamber.findUnique({
       where: { name },
-      include: { deceased: true }
+      include: { deceased: true },
     });
 
     if (!chamber) {
@@ -176,7 +185,9 @@ const deleteChamber = async (req, res) => {
     }
 
     if (chamber.deceased.length > 0) {
-      return res.status(400).json({ error: 'Cannot delete chamber with assigned deceased records' });
+      return res.status(400).json({
+        error: "Cannot delete chamber with assigned deceased records",
+      });
     }
 
     await prisma.chamber.delete({ where: { name } });
@@ -191,5 +202,5 @@ module.exports = {
   getAllChambers,
   getChamber,
   updateChamber,
-  deleteChamber
+  deleteChamber,
 };
