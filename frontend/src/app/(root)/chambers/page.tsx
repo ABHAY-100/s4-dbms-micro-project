@@ -86,11 +86,14 @@ export default function ChambersPage() {
         return response.data;
       } catch (error) {
         console.error("Error fetching chambers:", error);
-        toast.error(error.response?.data?.message || 
-                    error.message || 
-                    "An unknown error occurred", {
-          description: "Failed to fetch chambers"
-        });
+        toast.error(
+          error.response?.data?.message ||
+            error.message ||
+            "An unknown error occurred",
+          {
+            description: "Failed to fetch chambers",
+          }
+        );
         throw error;
       }
     },
@@ -122,7 +125,7 @@ export default function ChambersPage() {
       setIsCreateOpen(false);
       createForm.reset();
       toast.success("Chamber created successfully", {
-        description: "The chamber has been created successfully."
+        description: "The chamber has been created successfully.",
       });
     },
     onError: (error) => {
@@ -143,7 +146,7 @@ export default function ChambersPage() {
       setIsEditOpen(false);
       editForm.reset();
       toast.success("Chamber updated successfully", {
-        description: "The chamber has been updated successfully."
+        description: "The chamber has been updated successfully.",
       });
     },
     onError: (error) => {
@@ -162,7 +165,7 @@ export default function ChambersPage() {
       queryClient.invalidateQueries({ queryKey: ["chambers"] });
       setIsDeleteOpen(false);
       toast.success("Chamber deleted successfully", {
-        description: "The chamber has been deleted successfully."
+        description: "The chamber has been deleted successfully.",
       });
     },
     onError: (error) => {
@@ -353,7 +356,6 @@ export default function ChambersPage() {
         )}
       </div>
 
-      {/* Edit Chamber Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent>
           <DialogHeader>
@@ -429,7 +431,6 @@ export default function ChambersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Chamber Dialog */}
       <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <DialogContent>
           <DialogHeader>

@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -71,7 +71,6 @@ const deceasedFormSchema = z.object({
 type DeceasedFormValues = z.infer<typeof deceasedFormSchema>;
 
 export default function NewDeceasedPage() {
-  const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -102,31 +101,31 @@ export default function NewDeceasedPage() {
 
   const createMutation = useMutation({
     mutationFn: async (values: DeceasedFormValues) => {
-      // Format the data to match the expected API structure
       const formattedValues = {
         ...values,
         dateOfBirth: `${values.dateOfBirth}T00:00:00Z`,
         dateOfDeath: `${values.dateOfDeath}T00:00:00Z`,
-        // Convert personalBelongings to array
-        personalBelongings: values.personalBelongings ? [values.personalBelongings] : []
+        personalBelongings: values.personalBelongings
+          ? [values.personalBelongings]
+          : [],
       };
-      
-      const response = await axiosInstance.post("/mortuary/deceased", formattedValues);
+
+      const response = await axiosInstance.post(
+        "/mortuary/deceased",
+        formattedValues
+      );
       return response.data;
     },
     onSuccess: () => {
-      toast({
-        title: "Record created",
+      toast.success("Record created", {
         description: "The deceased record has been created successfully.",
       });
       router.push("/deceased");
     },
     onError: (error) => {
       setIsSubmitting(false);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: error.message || "Failed to create record",
-        variant: "destructive",
       });
     },
   });

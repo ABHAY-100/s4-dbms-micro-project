@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import axiosInstance from "@/lib/axios";
 import { DashboardLayout } from "@/components/dashboard/layout";
@@ -16,132 +16,93 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Bed, ClipboardList, Heart, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { 
-  Chamber, 
-  DeceasedRecord, 
-  ServiceStats, 
-  DashboardStats, 
-  QueryError 
-} from "@/types";
 
-// Constants
-const API_ENDPOINTS = {
-  CHAMBERS: "/mortuary/chambers/all",
-  DECEASED: "/mortuary/deceased/all",
-  SERVICES_STATS: "/mortuary/services/stats"
-};
+interface Chamber {
+  id: string;
+  name: string;
+  status: "AVAILABLE" | "OCCUPIED" | "MAINTENANCE";
+  capacity: number;
+  currentOccupancy: number;
+}
 
-// Initial dashboard state
-const INITIAL_DASHBOARD_STATS: DashboardStats = {
-  totalChambers: 0,
-  availableChambers: 0,
-  totalDeceased: 0,
-  activeServices: 0,
-  recentDeceased: [],
-  pendingServices: []
-};
+interface Deceased {
+  id: string;
+  firstName: string;
+  lastName: string;
+  status: string;
+  chamber?: Chamber;
+}
+
+interface DashboardStats {
+  totalChambers: number;
+  availableChambers: number;
+  totalDeceased: number;
+  activeServices: number;
+  recentDeceased: Deceased[];
+  pendingServices: any[];
+}
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats>(INITIAL_DASHBOARD_STATS);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalChambers: 0,
+    availableChambers: 0,
+    totalDeceased: 0,
+    activeServices: 0,
+    recentDeceased: [],
+    pendingServices: [],
+  });
 
-  // Chamber data query
   const {
     data: chambersData,
     isLoading: chambersLoading,
     error: chambersError,
     refetch: refetchChambers,
-  } = useQuery<Chamber[], QueryError>({
+  } = useQuery<Chamber[]>({
     queryKey: ["chambers"],
     queryFn: async () => {
-      const response = await axiosInstance.get(API_ENDPOINTS.CHAMBERS);
+      const response = await axiosInstance.get("/mortuary/chambers/all"); // Changed from /chambers/all
       return response.data;
     },
     retry: 1,
   });
 
-  // Deceased data query
   const {
     data: deceasedData,
     isLoading: deceasedLoading,
     error: deceasedError,
     refetch: refetchDeceased,
-  } = useQuery<DeceasedRecord[], QueryError>({
+  } = useQuery<Deceased[]>({
     queryKey: ["deceased"],
     queryFn: async () => {
-      const response = await axiosInstance.get(API_ENDPOINTS.DECEASED);
+      const response = await axiosInstance.get("/mortuary/deceased/all"); // Changed from /deceased/all
       return response.data;
     },
     retry: 1,
   });
 
-  // Services stats query
-  const {
-    data: servicesStatsData,
-    isLoading: servicesStatsLoading,
-    error: servicesStatsError,
-    refetch: refetchServicesStats,
-  } = useQuery<ServiceStats[], QueryError>({
-    queryKey: ["servicesStats"],
-    queryFn: async () => {
-      const response = await axiosInstance.get(API_ENDPOINTS.SERVICES_STATS);
-      return response.data;
-    },
-    retry: 1,
-  });
-
-  // Memoize pending services data to avoid recreating on each render
-  const pendingServicesData = useMemo(() => 
-    servicesStatsData?.filter(stat => stat.status === "PENDING") || [],
-    [servicesStatsData]
-  );
-  
-  const pendingServicesLoading = servicesStatsLoading;
-
-  // Retry all queries on error
   const handleRetry = async () => {
-    const promises = [];
-    if (chambersError) promises.push(refetchChambers());
-    if (deceasedError) promises.push(refetchDeceased());
-    if (servicesStatsError) promises.push(refetchServicesStats());
-    
-    await Promise.all(promises);
+    if (chambersError) await refetchChambers();
+    if (deceasedError) await refetchDeceased();
   };
 
-  // Update dashboard stats when data changes
   useEffect(() => {
-    if (!chambersData || !deceasedData || !servicesStatsData) return;
+    if (chambersData && deceasedData) {
+      const availableChambers = chambersData.filter(
+        (chamber) => chamber.status === "AVAILABLE"
+      ).length;
 
-    const availableChambers = chambersData.filter(
-      (chamber) => chamber.status === "AVAILABLE"
-    ).length;
+      setStats({
+        totalChambers: chambersData.length,
+        availableChambers,
+        totalDeceased: deceasedData.length,
+        activeServices: 0,
+        recentDeceased: deceasedData.slice(0, 5),
+        pendingServices: [],
+      });
+    }
+  }, [chambersData, deceasedData]);
 
-    // Calculate active services count from the stats
-    const activeServices = servicesStatsData.reduce((sum, stat) => {
-      return stat.status === "PENDING" ? sum + stat._count._all : sum;
-    }, 0);
-
-    setStats({
-      totalChambers: chambersData?.length || 0,
-      availableChambers,
-      totalDeceased: deceasedData?.length || 0,
-      activeServices,
-      recentDeceased: deceasedData.slice(0, 3),
-      pendingServices: pendingServicesData,
-    });
-  }, [chambersData, deceasedData, servicesStatsData, pendingServicesData]);
-
-  // Determine if there are any errors
-  const hasErrors = chambersError || deceasedError || servicesStatsError;
-  
-  // Determine if any data is loading
-  const isLoading = chambersLoading || deceasedLoading || servicesStatsLoading;
-
-  // Helper to extract error message
-  const getErrorMessage = (error: QueryError): string => {
-    return error instanceof Error ? error.message : "Unknown error";
-  };
-
-  if (hasErrors) {
+  if (chambersError || deceasedError) {
     return (
       <DashboardLayout>
         <div className="p-4">
@@ -157,7 +118,10 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
                   <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
                   <p className="text-red-700 text-sm">
-                    Failed to load chambers data: {getErrorMessage(chambersError)}
+                    Failed to load chambers data:{" "}
+                    {chambersError instanceof Error
+                      ? chambersError.message
+                      : "Unknown error"}
                   </p>
                 </div>
               )}
@@ -165,24 +129,19 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
                   <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
                   <p className="text-red-700 text-sm">
-                    Failed to load deceased records: {getErrorMessage(deceasedError)}
-                  </p>
-                </div>
-              )}
-              {servicesStatsError && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
-                  <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
-                  <p className="text-red-700 text-sm">
-                    Failed to load services stats: {getErrorMessage(servicesStatsError)}
+                    Failed to load deceased records:{" "}
+                    {deceasedError instanceof Error
+                      ? deceasedError.message
+                      : "Unknown error"}
                   </p>
                 </div>
               )}
               <Button
                 onClick={handleRetry}
-                disabled={isLoading}
+                disabled={chambersLoading || deceasedLoading}
                 className="w-full"
               >
-                {isLoading ? "Retrying..." : "Retry"}
+                {chambersLoading || deceasedLoading ? "Retrying..." : "Retry"}
               </Button>
             </CardContent>
           </Card>
@@ -223,6 +182,7 @@ export default function DashboardPage() {
           <TabsList>
             <TabsTrigger value="recent">Recent Records</TabsTrigger>
             <TabsTrigger value="services">Pending Services</TabsTrigger>
+            <TabsTrigger value="alerts">Alerts</TabsTrigger>
           </TabsList>
           <TabsContent value="recent">
             <Card className="border-2 shadow-none">
@@ -274,38 +234,29 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {pendingServicesLoading ? (
-                  <p>Loading pending services...</p>
-                ) : pendingServicesData.length > 0 ? (
-                  <div className="space-y-4">
-                    {pendingServicesData.map((stat, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between border-b pb-2"
-                      >
-                        <div>
-                          <p className="font-medium capitalize">
-                            {stat.type ? stat.type.toLowerCase() : "Unknown"}{" "}
-                            Services
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            Count: {stat._count._all}
-                            {stat._sum?.cost !== undefined && (
-                              <> • Total Cost: ${stat._sum.cost.toFixed(2)}</>
-                            )}
-                          </p>
-                        </div>
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href="/services">View All</Link>
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">
-                    No pending services at the moment.
+                <p className="text-muted-foreground">
+                  No pending services at the moment.
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="alerts">
+            <Card className="border-2 shadow-none">
+              <CardHeader>
+                <CardTitle>System Alerts</CardTitle>
+                <CardDescription>
+                  Important notifications that require attention.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
+                  <AlertCircle className="h-5 w-5 text-amber-500" />
+                  <p className="text-sm text-amber-700">
+                    {stats.availableChambers === 0
+                      ? "No available chambers! Consider adding more capacity."
+                      : "No critical alerts at this time."}
                   </p>
-                )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -339,7 +290,7 @@ export default function DashboardPage() {
             <CardContent>
               {chambersLoading ? (
                 <p>Loading chamber status...</p>
-              ) : chambersData.length > 0 ? (
+              ) : chambersData?.length > 0 ? (
                 <div className="space-y-2">
                   {chambersData.map((chamber) => (
                     <div
