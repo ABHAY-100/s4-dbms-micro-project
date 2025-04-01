@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { BarChart3, Bed, ClipboardList, Home, Heart } from "lucide-react";
+import { Contact, Bed, ClipboardList, Home, Heart } from "lucide-react";
 
 export function Sidebar({ className }: React.HTMLAttributes<HTMLDivElement>) {
   const pathname = usePathname();
@@ -58,6 +58,17 @@ export function Sidebar({ className }: React.HTMLAttributes<HTMLDivElement>) {
               <Link href="/services">
                 <Heart className="mr-2 h-4 w-4" />
                 Services
+              </Link>
+            </Button>
+            <Button
+              variant={pathname === "/next-of-kin" ? "secondary" : "ghost"}
+              size="sm"
+              className="w-full justify-start"
+              asChild
+            >
+              <Link href="/next-of-kin">
+                <Contact className="mr-2 h-4 w-4" />
+                NextOfKin
               </Link>
             </Button>
           </div>
